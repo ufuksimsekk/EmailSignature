@@ -707,6 +707,185 @@ async function handleGetUserSignatures(request, env) {
     }
 }
 
+// İmza silme
+async function handleDeleteSignature(request, env, signatureId) {
+    try {
+        // Token doğrulama
+        const authHeader = request.headers.get('Authorization');
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Yetkilendirme başlığı eksik' }), {
+                status: 401,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, env);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Geçersiz veya süresi dolmuş token' }), {
+                status: 401,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        const email = payload.sub;
+        
+        console.log(`İmza silme işlemi başlatıldı: Kullanıcı=${email}, İmza ID=${signatureId}`);
+        
+        // Kullanıcının imzalarını getir
+        const userSignaturesKey = `${email}:signatures`;
+        const userSignaturesData = await env.SIGNATURES.get(userSignaturesKey);
+        
+        if (!userSignaturesData) {
+            console.log('Kullanıcının hiç imzası yok');
+            return new Response(JSON.stringify({ error: 'İmza bulunamadı' }), {
+                status: 404,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        let userSignatures = JSON.parse(userSignaturesData);
+        
+        // Silinecek imzayı bul
+        const signatureIndex = userSignatures.findIndex(sig => sig.id === signatureId);
+        
+        if (signatureIndex === -1) {
+            console.log('Belirtilen ID ile imza bulunamadı:', signatureId);
+            return new Response(JSON.stringify({ error: 'İmza bulunamadı' }), {
+                status: 404,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        // İmzayı sil
+        userSignatures.splice(signatureIndex, 1);
+        
+        // Güncellenmiş imza listesini kaydet
+        await env.SIGNATURES.put(userSignaturesKey, JSON.stringify(userSignatures));
+        
+        console.log('İmza başarıyla silindi');
+        
+        return new Response(JSON.stringify({ 
+            message: 'İmza başarıyla silindi',
+            id: signatureId
+        }), {
+            status: 200,
+            headers: { 
+                'Content-Type': 'application/json',
+                ...corsHeaders
+            }
+        });
+    } catch (error) {
+        console.error('İmza silme hatası:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { 
+                'Content-Type': 'application/json',
+                ...corsHeaders
+            }
+        });
+    }
+}
+
+// Tekil imza getirme
+async function handleGetSingleSignature(request, env, signatureId) {
+    try {
+        // Token doğrulama
+        const authHeader = request.headers.get('Authorization');
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Yetkilendirme başlığı eksik' }), {
+                status: 401,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, env);
+        
+        if (!payload) {
+            return new Response(JSON.stringify({ error: 'Geçersiz veya süresi dolmuş token' }), {
+                status: 401,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        const email = payload.sub;
+        
+        console.log(`Tekil imza getirme işlemi başlatıldı: Kullanıcı=${email}, İmza ID=${signatureId}`);
+        
+        // Kullanıcının imzalarını getir
+        const userSignaturesKey = `${email}:signatures`;
+        const userSignaturesData = await env.SIGNATURES.get(userSignaturesKey);
+        
+        if (!userSignaturesData) {
+            console.log('Kullanıcının hiç imzası yok');
+            return new Response(JSON.stringify({ error: 'İmza bulunamadı' }), {
+                status: 404,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        let userSignatures = JSON.parse(userSignaturesData);
+        
+        // İmzayı bul
+        const signature = userSignatures.find(sig => sig.id === signatureId);
+        
+        if (!signature) {
+            console.log('Belirtilen ID ile imza bulunamadı:', signatureId);
+            return new Response(JSON.stringify({ error: 'İmza bulunamadı' }), {
+                status: 404,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...corsHeaders
+                }
+            });
+        }
+        
+        console.log('İmza başarıyla bulundu:', signature.id);
+        
+        return new Response(JSON.stringify(signature), {
+            status: 200,
+            headers: { 
+                'Content-Type': 'application/json',
+                ...corsHeaders
+            }
+        });
+    } catch (error) {
+        console.error('İmza getirme hatası:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { 
+                'Content-Type': 'application/json',
+                ...corsHeaders
+            }
+        });
+    }
+}
+
 // API Routes
 export default {
     async fetch(request, env, ctx) {
@@ -721,6 +900,23 @@ export default {
         }
         
         try {
+            // Belirli bir imza ID'si ile ilgili endpoint işleme
+            if (path.startsWith('/users/signatures/') && path.length > 18) {
+                const signatureId = path.substring(18); // '/users/signatures/' sonrası
+                
+                if (request.method === 'GET') {
+                    // Belirli bir imzayı getir
+                    return handleGetSingleSignature(request, env, signatureId);
+                } else if (request.method === 'DELETE') {
+                    // İmza silme işlemi
+                    return handleDeleteSignature(request, env, signatureId);
+                } else if (request.method === 'PUT') {
+                    // İmza güncelleme işlemi
+                    return new Response('Not Implemented', { status: 501, headers: corsHeaders });
+                }
+            }
+            
+            // Standart endpoint işleme
             switch (path) {
                 case '/users':
                     if (request.method === 'POST') {
@@ -760,10 +956,16 @@ export default {
                         headers: corsHeaders
                     });
             }
+            
+            return new Response('Method Not Allowed', { 
+                status: 405,
+                headers: corsHeaders
+            });
         } catch (error) {
-            return new Response(JSON.stringify({ error: error.message }), {
+            console.error('API hatası:', error);
+            return new Response(JSON.stringify({ error: error.message }), { 
                 status: 500,
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     ...corsHeaders
                 }

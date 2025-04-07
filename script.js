@@ -1509,20 +1509,36 @@ async function loadSignatureFromCloud(id) {
         
         console.log('Tekil imza API yanıtı status:', response.status);
         
+        // Önce response'u text olarak al
+        const responseText = await response.text();
+        console.log('Tekil imza yanıtı (ham):', responseText);
+        
         if (!response.ok) {
-            const data = await response.json();
-            console.error('Tekil imza yükleme hatası:', data);
-            throw new Error(data.error || 'İmza yüklenemedi');
+            // Eğer yanıt başarısız ve JSON formatındaysa, hata detayını göster
+            try {
+                const errorData = JSON.parse(responseText);
+                console.error('Tekil imza yükleme hatası:', errorData);
+                throw new Error(errorData.error || `İmza yüklenemedi (${response.status}: ${response.statusText})`);
+            } catch (parseError) {
+                // JSON parse edilemiyorsa ham hata mesajını göster
+                console.error('Yanıt JSON formatında değil:', parseError);
+                throw new Error(`İmza yüklenemedi (${response.status}: ${response.statusText})`);
+            }
         }
         
-        const responseText = await response.text();
-        console.log('Tekil imza yanıtı:', responseText);
+        // Boş yanıt kontrolü
+        if (!responseText || responseText.trim() === '') {
+            console.error('API boş yanıt döndü');
+            throw new Error('API boş yanıt döndü');
+        }
         
+        // JSON parse etmeyi dene
         try {
             const signature = JSON.parse(responseText);
+            console.log('İmza yüklendi:', signature);
             loadSignatureToForm(signature);
         } catch (parseError) {
-            console.error('JSON parse hatası:', parseError);
+            console.error('JSON parse hatası:', parseError, 'Ham yanıt:', responseText);
             throw new Error('API yanıtı geçerli JSON değil');
         }
     } catch (error) {
