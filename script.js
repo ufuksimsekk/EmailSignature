@@ -1605,6 +1605,92 @@ function loadSignatureToForm(signature) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
         
+        // Tüm metin içeriğini çıkaralım
+        const allTextContent = doc.querySelectorAll('div, span, p, td');
+        const allTexts = Array.from(allTextContent).map(el => el.textContent.trim()).filter(t => t);
+        
+        console.log('İmzadaki tüm metinler:', allTexts);
+        
+        // İmzadan tüm bilgileri çıkarmak için metin analizi
+        if (allTexts.length > 0) {
+            // Ad soyad genellikle ilk metindir veya en belirgin metin
+            if (!signature.name && allTexts[0]) {
+                document.getElementById('name').value = allTexts[0];
+            }
+            
+            // Diğer metinleri analiz et
+            for (let i = 1; i < allTexts.length; i++) {
+                const text = allTexts[i];
+                
+                // E-posta adresi kontrolü
+                if (text.includes('@') && text.includes('.')) {
+                    document.getElementById('email').value = text.split('|')[0].trim();
+                }
+                
+                // Telefon numarası kontrolü
+                else if (/(\+\d{1,3}|\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text)) {
+                    const phoneMatch = text.match(/(\+\d{1,3}|\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
+                    if (phoneMatch) {
+                        document.getElementById('phone').value = phoneMatch[0].trim();
+                    }
+                }
+                
+                // Pozisyon/Şirket bilgisi
+                else if (text.includes('|')) {
+                    const parts = text.split('|').map(part => part.trim());
+                    
+                    // Tipik olarak "Pozisyon | Şirket" formatında
+                    if (parts.length >= 2) {
+                        document.getElementById('title').value = parts[0];
+                        document.getElementById('company').value = parts[1];
+                    }
+                }
+                
+                // Website kontrolü
+                else if (text.includes('www.') || text.includes('http')) {
+                    document.getElementById('website').value = text.trim();
+                }
+                
+                // Uzun metin muhtemelen adres
+                else if (text.length > 30 && !document.getElementById('address').value) {
+                    document.getElementById('address').value = text;
+                }
+                
+                // Tek kelime ve ilk metin değilse muhtemelen pozisyon
+                else if (text.split(' ').length <= 3 && !document.getElementById('title').value) {
+                    document.getElementById('title').value = text;
+                }
+                
+                // Çok kelimeli ve adres değilse muhtemelen şirket
+                else if (text.split(' ').length > 1 && !document.getElementById('company').value) {
+                    document.getElementById('company').value = text;
+                }
+            }
+        }
+        
+        // Sosyal medya bağlantılarını kontrol et
+        const socialLinks = doc.querySelectorAll('a[href]');
+        for (const link of socialLinks) {
+            const href = link.getAttribute('href');
+            
+            if (href.includes('linkedin.com')) {
+                document.getElementById('linkedin').checked = true;
+                document.getElementById('linkedinUrl').value = href;
+            } else if (href.includes('twitter.com') || href.includes('x.com')) {
+                document.getElementById('twitter').checked = true;
+                document.getElementById('twitterUrl').value = href;
+            } else if (href.includes('facebook.com')) {
+                document.getElementById('facebook').checked = true;
+                document.getElementById('facebookUrl').value = href;
+            } else if (href.includes('instagram.com')) {
+                document.getElementById('instagram').checked = true;
+                document.getElementById('instagramUrl').value = href;
+            }
+        }
+        
+        // Sosyal medya görünürlüğünü güncelle
+        updateSocialLinksVisibility();
+        
         // Font ailesini al
         const fontStyles = doc.querySelector('div[style*="font-family"]');
         if (fontStyles) {
@@ -1640,7 +1726,20 @@ function loadSignatureToForm(signature) {
             }
         }
         
-        // Renkleri al
+        // Renkleri al - önce birincil renk
+        const colorElement = doc.querySelector('div[style*="color:"]');
+        if (colorElement) {
+            const styleAttr = colorElement.getAttribute('style');
+            const colorMatch = styleAttr.match(/color:\s*([^;]+)/);
+            
+            if (colorMatch && colorMatch[1]) {
+                const color = colorMatch[1].trim();
+                document.getElementById('primaryColor').value = color;
+                document.getElementById('primaryColorHex').value = color;
+            }
+        }
+        
+        // İkincil renk - kenar çizgisi
         const borderStyle = doc.querySelector('td[style*="border-right: 3px solid"]');
         if (borderStyle) {
             const styleAttr = borderStyle.getAttribute('style');
@@ -1702,6 +1801,12 @@ function loadSignatureToForm(signature) {
                     template.classList.add('selected');
                 }
             });
+        }
+        
+        // Yasal uyarı metni kontrolü
+        const smallTexts = doc.querySelectorAll('div[style*="font-size: 10px"], div[style*="font-size:10px"]');
+        if (smallTexts.length > 0) {
+            document.getElementById('disclaimer').value = smallTexts[0].textContent.trim();
         }
         
         // İmzayı tekrar oluştur
