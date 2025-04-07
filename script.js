@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 
     // Sayfa yüklendiğinde oturum kontrolü
-    await checkSession();
+    await checkAuth();
 });
 
 // İmza oluşturma işlevi
@@ -1617,6 +1617,20 @@ async function checkAuth() {
     } catch (error) {
         console.error('Oturum kontrolü hatası:', error);
         localStorage.removeItem('userToken');
+    }
+}
+
+// Kullanıcı arayüzünü güncelleme
+function updateUI() {
+    if (currentUser) {
+        loginBtn.style.display = 'none';
+        registerBtn.style.display = 'none';
+        userMenu.style.display = 'flex';
+        userName.textContent = currentUser.name || currentUser.email || 'Kullanıcı';
+    } else {
+        loginBtn.style.display = 'block';
+        registerBtn.style.display = 'block';
+        userMenu.style.display = 'none';
     }
 }
 
