@@ -205,15 +205,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         signatureData.name = signatureName;
         signatureData.html = document.getElementById('signaturePreview').innerHTML;
         
-        // Local storage'a kaydet
-        let savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-        savedSignatures.push(signatureData);
-        localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+        // Kullanıcı giriş yapmış mı kontrol et
+        if (currentUser && currentUser.token) {
+            // Buluta kaydet
+            saveSignatureToCloud(signatureData)
+                .then(() => {
+                    alert(`"${signatureName}" imzası başarıyla buluta kaydedildi!`);
+                })
+                .catch(error => {
+                    console.error('Buluta kaydetme hatası:', error);
+                    alert('Buluta kaydetme başarısız oldu, yerel olarak kaydediliyor...');
+                    saveSignatureLocally(signatureData);
+                });
+        } else {
+            // Yerel storage'a kaydet
+            saveSignatureLocally(signatureData);
+            alert(`"${signatureName}" imzası yerel olarak kaydedildi! Bulutta saklamak için giriş yapın.`);
+        }
         
         // Kaydedilen imzalar listesini güncelle
         updateSavedSignaturesList();
-        
-        alert(`"${signatureName}" imzası başarıyla kaydedildi!`);
     });
     
     // Tüm imzaları dışa aktar butonu
@@ -1111,99 +1122,241 @@ function collectFormData() {
 }
 
 // Kaydedilen imzaların listesini güncelle
-function updateSavedSignaturesList() {
+async function updateSavedSignaturesList() {
     const savedSignaturesList = document.getElementById('savedSignaturesList');
-    const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
     
-    if (savedSignatures.length === 0) {
-        savedSignaturesList.innerHTML = '<p>Henüz kaydedilmiş imza bulunmuyor.</p>';
-        return;
+    try {
+        // İlk olarak yükleniyor mesajı göster
+        savedSignaturesList.innerHTML = '<p>İmzalar yükleniyor...</p>';
+        
+        // Yerel imzaları al
+        const localSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+        
+        // Bulut imzalarını al (eğer kullanıcı giriş yapmışsa)
+        let cloudSignatures = [];
+        if (currentUser && currentUser.token) {
+            try {
+                cloudSignatures = await loadSignaturesFromCloud();
+            } catch (error) {
+                console.error('Buluttan imzalar yüklenemedi:', error);
+                // Hata olsa bile devam et, sadece yerel imzaları göster
+            }
+        }
+        
+        // İmza yok ise bilgi mesajı göster
+        if (localSignatures.length === 0 && cloudSignatures.length === 0) {
+            savedSignaturesList.innerHTML = '<p>Henüz kaydedilmiş imza bulunmuyor.</p>';
+            return;
+        }
+        
+        let html = '<div class="saved-signatures-container">';
+        
+        // Bulut imzaları göster
+        if (cloudSignatures.length > 0) {
+            html += '<h4>Bulut İmzalarınız</h4>';
+            html += '<div class="saved-signatures-grid">';
+            
+            cloudSignatures.forEach((signature) => {
+                html += `
+                    <div class="saved-signature" data-id="${signature.id}" data-type="cloud">
+                        <div class="signature-name">${signature.name}</div>
+                        <div class="signature-preview">${signature.html}</div>
+                        <div class="signature-actions">
+                            <button class="load-signature" data-id="${signature.id}" data-type="cloud">Yükle</button>
+                            <button class="delete-signature" data-id="${signature.id}" data-type="cloud">Sil</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        // Yerel imzaları göster
+        if (localSignatures.length > 0) {
+            html += '<h4>Yerel İmzalarınız</h4>';
+            html += '<div class="saved-signatures-grid">';
+            
+            localSignatures.forEach((signature, index) => {
+                html += `
+                    <div class="saved-signature" data-index="${index}" data-type="local">
+                        <div class="signature-name">${signature.name}</div>
+                        <div class="signature-preview">${signature.html}</div>
+                        <div class="signature-actions">
+                            <button class="load-signature" data-index="${index}" data-type="local">Yükle</button>
+                            <button class="delete-signature" data-index="${index}" data-type="local">Sil</button>
+                            ${currentUser && currentUser.token ? `<button class="upload-signature" data-index="${index}">Buluta Yükle</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        savedSignaturesList.innerHTML = html;
+        
+        // Yükle, sil ve buluta yükle butonları için event listener'ları ekle
+        document.querySelectorAll('.load-signature').forEach(button => {
+            button.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                
+                if (type === 'local') {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    loadSignatureFromLocal(index);
+                } else if (type === 'cloud') {
+                    const id = this.getAttribute('data-id');
+                    loadSignatureFromCloud(id);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.delete-signature').forEach(button => {
+            button.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                
+                if (type === 'local') {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    deleteSignatureFromLocal(index);
+                } else if (type === 'cloud') {
+                    const id = this.getAttribute('data-id');
+                    deleteSignatureFromCloudUI(id);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.upload-signature').forEach(button => {
+            button.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                uploadLocalSignatureToCloud(index);
+            });
+        });
+        
+    } catch (error) {
+        console.error('İmza listesi güncellenirken hata:', error);
+        savedSignaturesList.innerHTML = '<p>İmzalar yüklenirken bir hata oluştu.</p>';
     }
-    
-    let html = '<div class="saved-signatures-grid">';
-    savedSignatures.forEach((signature, index) => {
-        html += `
-            <div class="saved-signature" data-index="${index}">
-                <div class="signature-preview">${signature.html}</div>
-                <div class="signature-actions">
-                    <button class="load-signature" data-index="${index}">Yükle</button>
-                    <button class="delete-signature" data-index="${index}">Sil</button>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    
-    savedSignaturesList.innerHTML = html;
-    
-    // Yükle ve sil butonları için event listener'ları ekle
-    document.querySelectorAll('.load-signature').forEach(button => {
-        button.addEventListener('click', function() {
-            const index = parseInt(this.getAttribute('data-index'));
-            loadSignature(index);
-        });
-    });
-    
-    document.querySelectorAll('.delete-signature').forEach(button => {
-        button.addEventListener('click', function() {
-            const index = parseInt(this.getAttribute('data-index'));
-            deleteSignature(index);
-        });
-    });
 }
 
 // İmza yükleme fonksiyonu
-function loadSignature(index) {
+function loadSignatureFromLocal(index) {
     const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
     if (index >= 0 && index < savedSignatures.length) {
         const signature = savedSignatures[index];
-        
-        // Form alanlarını doldur
-        document.getElementById('name').value = signature.name || '';
-        document.getElementById('title').value = signature.title || '';
-        document.getElementById('company').value = signature.company || '';
-        document.getElementById('email').value = signature.email || '';
-        document.getElementById('phone').value = signature.phone || '';
-        document.getElementById('website').value = signature.website || '';
-        document.getElementById('address').value = signature.address || '';
-        document.getElementById('template').value = signature.template || 'simple';
-        document.getElementById('font').value = signature.font || 'Arial';
-        document.getElementById('fontSize').value = signature.fontSize || '14px';
-        document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
-        document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
-        document.getElementById('logoUrl').value = signature.logoUrl || '';
-        document.getElementById('avatarUrl').value = signature.avatarUrl || '';
-        document.getElementById('disclaimer').value = signature.disclaimer || '';
-        
-        // Sosyal medya ayarlarını güncelle
-        document.getElementById('linkedin').checked = signature.linkedin?.enabled || false;
-        document.getElementById('twitter').checked = signature.twitter?.enabled || false;
-        document.getElementById('facebook').checked = signature.facebook?.enabled || false;
-        document.getElementById('instagram').checked = signature.instagram?.enabled || false;
-        
-        document.getElementById('linkedinUrl').value = signature.linkedin?.url || '';
-        document.getElementById('twitterUrl').value = signature.twitter?.url || '';
-        document.getElementById('facebookUrl').value = signature.facebook?.url || '';
-        document.getElementById('instagramUrl').value = signature.instagram?.url || '';
-        
-        // Sosyal medya input alanlarını göster/gizle
-        updateSocialLinksVisibility();
-        
-        // İmzayı oluştur
-        generateSignature();
-        
-        // Editör sekmesine geç
-        switchTab('editor');
+        loadSignatureToForm(signature);
     }
 }
 
+// Buluttan imza yükleme
+async function loadSignatureFromCloud(id) {
+    try {
+        if (!currentUser || !currentUser.token) {
+            throw new Error('Kullanıcı giriş yapmamış');
+        }
+        
+        const response = await fetch(`${API_URL}/users/signatures/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'İmza yüklenemedi');
+        }
+        
+        const signature = await response.json();
+        loadSignatureToForm(signature);
+    } catch (error) {
+        console.error('Buluttan imza yükleme hatası:', error);
+        alert('İmza yüklenemedi: ' + error.message);
+    }
+}
+
+// Form verilerini doldur
+function loadSignatureToForm(signature) {
+    // Form alanlarını doldur
+    document.getElementById('name').value = signature.name || '';
+    document.getElementById('title').value = signature.title || '';
+    document.getElementById('company').value = signature.company || '';
+    document.getElementById('email').value = signature.email || '';
+    document.getElementById('phone').value = signature.phone || '';
+    document.getElementById('website').value = signature.website || '';
+    document.getElementById('address').value = signature.address || '';
+    document.getElementById('template').value = signature.template || 'simple';
+    document.getElementById('font').value = signature.font || 'Arial';
+    document.getElementById('fontSize').value = signature.fontSize || '14px';
+    document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
+    document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
+    document.getElementById('logoUrl').value = signature.logoUrl || '';
+    document.getElementById('avatarUrl').value = signature.avatarUrl || '';
+    document.getElementById('disclaimer').value = signature.disclaimer || '';
+    
+    // Sosyal medya ayarlarını güncelle
+    document.getElementById('linkedin').checked = signature.linkedin?.enabled || false;
+    document.getElementById('twitter').checked = signature.twitter?.enabled || false;
+    document.getElementById('facebook').checked = signature.facebook?.enabled || false;
+    document.getElementById('instagram').checked = signature.instagram?.enabled || false;
+    
+    document.getElementById('linkedinUrl').value = signature.linkedin?.url || '';
+    document.getElementById('twitterUrl').value = signature.twitter?.url || '';
+    document.getElementById('facebookUrl').value = signature.facebook?.url || '';
+    document.getElementById('instagramUrl').value = signature.instagram?.url || '';
+    
+    // Sosyal medya input alanlarını göster/gizle
+    updateSocialLinksVisibility();
+    
+    // İmzayı oluştur
+    generateSignature();
+    
+    // Editör sekmesine geç
+    switchTab('editor');
+}
+
 // İmza silme fonksiyonu
-function deleteSignature(index) {
+function deleteSignatureFromLocal(index) {
     if (confirm('Bu imzayı silmek istediğinizden emin misiniz?')) {
         const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
         savedSignatures.splice(index, 1);
         localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
         updateSavedSignaturesList();
+    }
+}
+
+// Bulut imzasını silme UI
+async function deleteSignatureFromCloudUI(id) {
+    if (confirm('Bu imzayı buluttan silmek istediğinizden emin misiniz?')) {
+        try {
+            await deleteSignatureFromCloud(id);
+            alert('İmza başarıyla silindi');
+            updateSavedSignaturesList();
+        } catch (error) {
+            console.error('İmza silme hatası:', error);
+            alert('İmza silinemedi: ' + error.message);
+        }
+    }
+}
+
+// Yerel imzayı buluta yükleme
+async function uploadLocalSignatureToCloud(index) {
+    try {
+        if (!currentUser || !currentUser.token) {
+            throw new Error('Kullanıcı giriş yapmamış');
+        }
+        
+        const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+        if (index >= 0 && index < savedSignatures.length) {
+            const signature = savedSignatures[index];
+            
+            await saveSignatureToCloud(signature);
+            alert(`"${signature.name}" imzası başarıyla buluta yüklendi!`);
+            updateSavedSignaturesList();
+        }
+    } catch (error) {
+        console.error('Buluta yükleme hatası:', error);
+        alert('İmza buluta yüklenemedi: ' + error.message);
     }
 }
 
@@ -1410,6 +1563,12 @@ async function handleLogin() {
         updateUI();
         hideAuthModal();
         alert('Giriş başarılı!');
+        
+        // İmza listesini güncelle
+        await updateSavedSignaturesList();
+        
+        // Ayarlar sekmesini aç
+        switchTab('settings');
     } catch (error) {
         alert('Giriş başarısız: ' + error.message);
     }
@@ -1419,45 +1578,11 @@ function handleLogout() {
     currentUser = null;
     localStorage.removeItem('userToken');
     updateUI();
+    
+    // İmza listesini güncelle
+    updateSavedSignaturesList();
+    
     alert('Çıkış yapıldı!');
-}
-
-// Sayfa yüklendiğinde oturum kontrolü
-async function checkSession() {
-    const token = localStorage.getItem('userToken');
-    if (token) {
-        try {
-            const response = await fetch(`${API_URL}/users/me`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            if (response.ok) {
-                currentUser = await response.json();
-                currentUser.token = token;
-            } else {
-                localStorage.removeItem('userToken');
-            }
-        } catch (error) {
-            console.error('Oturum kontrolü hatası:', error);
-            localStorage.removeItem('userToken');
-        }
-    }
-    updateUI();
-}
-
-function updateUI() {
-    if (currentUser) {
-        loginBtn.style.display = 'none';
-        registerBtn.style.display = 'none';
-        userMenu.style.display = 'flex';
-        userName.textContent = currentUser.name;
-    } else {
-        loginBtn.style.display = 'block';
-        registerBtn.style.display = 'block';
-        userMenu.style.display = 'none';
-    }
 }
 
 // Kullanıcı oturum kontrolü
@@ -1484,7 +1609,11 @@ async function checkAuth() {
         
         const data = await response.json();
         currentUser = data;
+        currentUser.token = token; // Token'ı da kaydet
         updateUI();
+        
+        // İmza listesini güncelle
+        await updateSavedSignaturesList();
     } catch (error) {
         console.error('Oturum kontrolü hatası:', error);
         localStorage.removeItem('userToken');
@@ -1552,4 +1681,84 @@ function formatHTML(html) {
     });
     
     return formatted.substring(1, formatted.length - 3);
+}
+
+// Yerel olarak imza kaydetme
+function saveSignatureLocally(signatureData) {
+    let savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+    savedSignatures.push(signatureData);
+    localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+}
+
+// Buluta imza kaydetme
+async function saveSignatureToCloud(signatureData) {
+    try {
+        const response = await fetch(`${API_URL}/users/signatures`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.token}`
+            },
+            body: JSON.stringify(signatureData)
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'İmza kaydedilemedi');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Buluta kaydetme hatası:', error);
+        throw error;
+    }
+}
+
+// Buluttan imzaları yükleme
+async function loadSignaturesFromCloud() {
+    try {
+        if (!currentUser || !currentUser.token) {
+            throw new Error('Kullanıcı giriş yapmamış');
+        }
+        
+        const response = await fetch(`${API_URL}/users/signatures`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'İmzalar yüklenemedi');
+        }
+        
+        const signatures = await response.json();
+        return signatures;
+    } catch (error) {
+        console.error('Buluttan yükleme hatası:', error);
+        throw error;
+    }
+}
+
+// Buluttan imza silme
+async function deleteSignatureFromCloud(signatureId) {
+    try {
+        const response = await fetch(`${API_URL}/users/signatures/${signatureId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'İmza silinemedi');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Buluttan silme hatası:', error);
+        throw error;
+    }
 }
