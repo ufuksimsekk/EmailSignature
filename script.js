@@ -2007,6 +2007,8 @@ async function saveSignatureToCloud(signatureData) {
 // Buluttan imza silme
 async function deleteSignatureFromCloud(signatureId) {
     try {
+        console.log('İmza siliniyor, ID:', signatureId);
+        
         const response = await fetch(`${API_URL}/users/signatures/${signatureId}`, {
             method: 'DELETE',
             headers: {
@@ -2014,12 +2016,49 @@ async function deleteSignatureFromCloud(signatureId) {
             }
         });
         
+        console.log('İmza silme API yanıtı status:', response.status);
+        
+        // Önce yanıtı metin olarak al
+        const responseText = await response.text();
+        console.log('İmza silme API yanıtı (ham):', responseText);
+        
         if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'İmza silinemedi');
+            // Yanıt başarısız, hata mesajını çıkar
+            let errorMessage = 'İmza silinemedi';
+            
+            if (responseText) {
+                try {
+                    // Yanıt JSON mu diye kontrol et
+                    const errorData = JSON.parse(responseText);
+                    errorMessage = errorData.error || 'İmza silinemedi';
+                } catch (parseError) {
+                    // JSON değilse, ham yanıtı hata mesajı olarak kullan
+                    console.error('İmza silme hatası (JSON olmayan yanıt):', responseText);
+                    errorMessage = `İmza silinemedi (${response.status}: ${responseText.substring(0, 50)}${responseText.length > 50 ? '...' : ''})`;
+                }
+            }
+            
+            throw new Error(errorMessage);
         }
         
-        return await response.json();
+        // Başarılı yanıt
+        console.log('İmza başarıyla silindi');
+        
+        // Yanıt boş olabilir, JSON olarak parse etmeyi dene
+        if (responseText && responseText.trim()) {
+            try {
+                return JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('İmza silme başarılı, ancak JSON yanıt alınamadı:', parseError);
+                // Boş bir obje döndürerek işlemin başarılı olduğunu bildir
+                return { success: true };
+            }
+        } else {
+            // Boş yanıt durumunda
+            console.log('İmza silme başarılı, boş yanıt alındı');
+            return { success: true };
+        }
+        
     } catch (error) {
         console.error('Buluttan silme hatası:', error);
         throw error;
