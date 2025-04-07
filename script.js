@@ -1495,7 +1495,8 @@ async function loadSignaturesFromCloud() {
 async function loadSignatureFromCloud(id) {
     try {
         if (!currentUser || !currentUser.token) {
-            throw new Error('Kullanıcı giriş yapmamış');
+            alert('Bu işlemi gerçekleştirmek için giriş yapmalısınız.');
+            return;
         }
         
         console.log('Buluttan imza yükleniyor, ID:', id);
@@ -1566,6 +1567,9 @@ async function loadSignatureFromCloud(id) {
             switchTab('editor'); // Önce editör sekmesine geç
             loadSignatureToForm(signature);
             
+            // İmzayı tekrar oluştur
+            generateSignature();
+            
             // Kullanıcıya bilgi ver
             alert(`"${signature.name || 'İsimsiz imza'}" başarıyla yüklendi ve düzenleyicide açıldı.`);
         } catch (parseError) {
@@ -1583,100 +1587,121 @@ function loadSignatureToForm(signature) {
     console.log('loadSignatureToForm çağrıldı, gelen veri:', signature);
     
     try {
-        // Temel form alanlarını doldur
-        document.getElementById('name').value = signature.name || '';
-        document.getElementById('title').value = signature.title || '';
-        document.getElementById('company').value = signature.company || '';
-        document.getElementById('email').value = signature.email || '';
-        document.getElementById('phone').value = signature.phone || '';
-        document.getElementById('website').value = signature.website || '';
-        document.getElementById('address').value = signature.address || '';
-        document.getElementById('template').value = signature.template || 'simple';
-        document.getElementById('font').value = signature.font || 'Arial';
-        document.getElementById('fontSize').value = signature.fontSize || '14px';
-        document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
-        document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
-        document.getElementById('logoUrl').value = signature.logoUrl || '';
-        document.getElementById('avatarUrl').value = signature.avatarUrl || '';
-        document.getElementById('disclaimer').value = signature.disclaimer || '';
+        // HTML içeriğini parse et
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(signature.html, 'text/html');
         
-        // Logo boyutu ayarları
-        if (typeof signature.logoSize !== 'undefined') {
-            logoSize = signature.logoSize;
-            const logoSizeSlider = document.getElementById('logoSizeSlider');
-            if (logoSizeSlider) {
-                logoSizeSlider.value = logoSize;
-                document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+        // Önce preview'a HTML'i ekleyelim
+        document.getElementById('signaturePreview').innerHTML = signature.html;
+        
+        // Ad Soyad - renk içeren veya font-weight: bold içeren div'i ara
+        const nameElement = doc.querySelector('div[style*="color: #3498db"], div[style*="font-weight: bold"]');
+        if (nameElement) {
+            document.getElementById('name').value = nameElement.textContent.trim();
+        }
+        
+        // Tüm div'leri al
+        const allDivs = Array.from(doc.querySelectorAll('div'));
+        
+        // Ad soyad dışındaki ilk div pozisyon ve şirket olabilir
+        if (allDivs.length > 1) {
+            const titleCompanyText = allDivs[1].textContent.trim();
+            if (titleCompanyText.includes('|')) {
+                const [title, company] = titleCompanyText.split('|').map(s => s.trim());
+                document.getElementById('title').value = title || '';
+                document.getElementById('company').value = company || '';
+            } else {
+                document.getElementById('title').value = titleCompanyText;
             }
-        } else {
-            logoSize = 100; // Varsayılan değer
         }
         
-        // Oran koruma ayarları
-        if (typeof signature.maintainRatio !== 'undefined') {
-            maintainRatio = signature.maintainRatio;
-            const maintainRatioCheckbox = document.getElementById('maintainRatio');
-            if (maintainRatioCheckbox) {
-                maintainRatioCheckbox.checked = maintainRatio;
+        // İkinci div e-posta ve telefon olabilir
+        if (allDivs.length > 2) {
+            const contactText = allDivs[2].textContent.trim();
+            if (contactText.includes('|')) {
+                const [email, phone] = contactText.split('|').map(s => s.trim());
+                document.getElementById('email').value = email || '';
+                document.getElementById('phone').value = phone || '';
+            } else if (contactText.includes('@')) {
+                document.getElementById('email').value = contactText;
+            } else {
+                document.getElementById('phone').value = contactText;
             }
-        } else {
-            maintainRatio = true; // Varsayılan değer
         }
         
-        // Sosyal medya ayarlarını güncelle
-        // LinkedIn
-        const linkedinCheckbox = document.getElementById('linkedin');
-        const linkedinUrlInput = document.getElementById('linkedinUrl');
-        if (signature.linkedin) {
-            linkedinCheckbox.checked = signature.linkedin.enabled || false;
-            linkedinUrlInput.value = signature.linkedin.url || '';
-        } else {
-            linkedinCheckbox.checked = false;
-            linkedinUrlInput.value = '';
+        // Font ve boyut
+        const styleElement = doc.querySelector('div[style*="font-family"]');
+        if (styleElement) {
+            const style = styleElement.getAttribute('style');
+            const fontMatch = style.match(/font-family:\s*([^;]+)/);
+            const sizeMatch = style.match(/font-size:\s*([^;]+)/);
+            
+            if (fontMatch) {
+                const font = fontMatch[1].trim().replace(/['"]/g, '').split(',')[0];
+                const fontSelect = document.getElementById('font');
+                // Eğer font varsa seç, yoksa Arial'i seç
+                if (Array.from(fontSelect.options).some(option => option.value === font)) {
+                    fontSelect.value = font;
+                } else {
+                    fontSelect.value = 'Arial';
+                }
+            }
+            
+            if (sizeMatch) {
+                const size = sizeMatch[1].trim();
+                const fontSizeSelect = document.getElementById('fontSize');
+                // Eğer boyut varsa seç, yoksa 14px'i seç
+                if (Array.from(fontSizeSelect.options).some(option => option.value === size)) {
+                    fontSizeSelect.value = size;
+                } else {
+                    fontSizeSelect.value = '14px';
+                }
+            }
         }
         
-        // Twitter
-        const twitterCheckbox = document.getElementById('twitter');
-        const twitterUrlInput = document.getElementById('twitterUrl');
-        if (signature.twitter) {
-            twitterCheckbox.checked = signature.twitter.enabled || false;
-            twitterUrlInput.value = signature.twitter.url || '';
-        } else {
-            twitterCheckbox.checked = false;
-            twitterUrlInput.value = '';
+        // Renk
+        const colorElement = doc.querySelector('div[style*="color: #"]');
+        if (colorElement) {
+            const colorMatch = colorElement.getAttribute('style').match(/color:\s*([^;]+)/);
+            if (colorMatch) {
+                const color = colorMatch[1].trim();
+                document.getElementById('primaryColor').value = color;
+                document.getElementById('primaryColorHex').value = color;
+            }
         }
         
-        // Facebook
-        const facebookCheckbox = document.getElementById('facebook');
-        const facebookUrlInput = document.getElementById('facebookUrl');
-        if (signature.facebook) {
-            facebookCheckbox.checked = signature.facebook.enabled || false;
-            facebookUrlInput.value = signature.facebook.url || '';
-        } else {
-            facebookCheckbox.checked = false;
-            facebookUrlInput.value = '';
-        }
+        // Şablon seçimini görsel olarak güncelle - ilk olarak basit şablonu varsayılan olarak belirle
+        document.querySelectorAll('.template').forEach(template => {
+            template.classList.remove('selected');
+            if (template.getAttribute('data-template') === 'simple') {
+                template.classList.add('selected');
+                document.getElementById('template').value = 'simple';
+            }
+        });
         
-        // Instagram
-        const instagramCheckbox = document.getElementById('instagram');
-        const instagramUrlInput = document.getElementById('instagramUrl');
-        if (signature.instagram) {
-            instagramCheckbox.checked = signature.instagram.enabled || false;
-            instagramUrlInput.value = signature.instagram.url || '';
-        } else {
-            instagramCheckbox.checked = false;
-            instagramUrlInput.value = '';
-        }
+        // Sosyal medya ayarlarını sıfırla
+        ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
+            document.getElementById(social).checked = false;
+            document.getElementById(`${social}Url`).value = '';
+        });
         
-        // Sosyal medya input alanlarını göster/gizle
+        // Logo ve avatar ayarlarını sıfırla
+        document.getElementById('logoUrl').value = '';
+        document.getElementById('avatarUrl').value = '';
+        document.getElementById('disclaimer').value = '';
+        
+        // Logo boyutu ayarlarını sıfırla
+        logoSize = 80;
+        document.getElementById('logoSize').value = logoSize;
+        document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+        document.getElementById('logoMaintainRatio').checked = true;
+        
+        // Sosyal medya input alanlarını gizle
         updateSocialLinksVisibility();
         
-        // Başlıklarda renkleri de güncelle
-        document.getElementById('primaryColorHex').value = signature.primaryColor || '#3498db';
-        document.getElementById('secondaryColorHex').value = signature.secondaryColor || '#2c3e50';
-        
-        // İmzayı oluştur
-        generateSignature();
+        // Logo kontrollerini gizle
+        const logoControls = document.querySelector('.logo-size-controls');
+        logoControls.style.display = 'none';
         
         console.log('Form alanları başarıyla dolduruldu');
     } catch (error) {
