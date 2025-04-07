@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-posta İmza Oluşturucu</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link id="fontLink" rel="stylesheet">
+    <!-- HTML2Canvas -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>E-posta İmza Oluşturucu</h1>
+            <div class="user-actions">
+                <button id="loginBtn" class="btn-secondary">Giriş Yap</button>
+                <button id="registerBtn" class="btn-primary">Kayıt Ol</button>
+                <div id="userMenu" style="display: none;">
+                    <span id="userName">Kullanıcı Adı</span>
+                    <button id="logoutBtn" class="btn-secondary">Çıkış Yap</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-modal" id="authModal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2 id="modalTitle">Giriş Yap</h2>
+                <form id="authForm">
+                    <div class="form-group">
+                        <label for="authEmail">E-posta</label>
+                        <input type="email" id="authEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="authPassword">Şifre</label>
+                        <input type="password" id="authPassword" required>
+                    </div>
+                    <div class="form-group" id="authNameGroup" style="display: none;">
+                        <label for="authName">Ad Soyad</label>
+                        <input type="text" id="authName">
+                    </div>
+                    <button type="submit" id="authSubmitBtn">Giriş Yap</button>
+                    <div class="auth-links">
+                        <a href="#" id="switchAuthMode">Hesabınız yok mu? Kayıt olun</a>
+                        <a href="#" id="forgotPassword">Şifremi Unuttum</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="editor">İmza Editörü</div>
+            
+        </div>
+        
+        <div class="main-content">
+            <div class="tab-content active" id="editor">
+                <div class="editor-container">
+                    <div class="form-section">
+                        <h3>İmza Bilgileri</h3>
+                        <div class="form-group">
+                            <label for="name">Ad Soyad</label>
+                            <input type="text" id="name" placeholder="Adınız Soyadınız">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="title">Ünvan / Pozisyon</label>
+                            <input type="text" id="title" placeholder="Ünvanınız veya Pozisyonunuz">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="company">Şirket Adı</label>
+                            <input type="text" id="company" placeholder="Şirket Adınız">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">E-posta</label>
+                            <input type="email" id="email" placeholder="ornek@sirket.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="phone">Telefon</label>
+                            <input type="text" id="phone" placeholder="+90 555 123 4567">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="website">Web Sitesi</label>
+                            <input type="text" id="website" placeholder="www.websitesi.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="address">Adres</label>
+                            <textarea id="address" rows="3" placeholder="Şirket adresi"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Sosyal Medya</label>
+                            <div class="social-icons">
+                                <div class="icon-checkbox">
+                                    <input type="checkbox" id="linkedin">
+                                    <label for="linkedin">LinkedIn</label>
+                                </div>
+                                <div class="icon-checkbox">
+                                    <input type="checkbox" id="twitter">
+                                    <label for="twitter">Twitter</label>
+                                </div>
+                                <div class="icon-checkbox">
+                                    <input type="checkbox" id="facebook">
+                                    <label for="facebook">Facebook</label>
+                                </div>
+                                <div class="icon-checkbox">
+                                    <input type="checkbox" id="instagram">
+                                    <label for="instagram">Instagram</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="socialLinksContainer" style="display: none;">
+                            <div class="form-group linkedin-link" style="display: none;">
+                                <label for="linkedinUrl">LinkedIn URL</label>
+                                <input type="text" id="linkedinUrl" placeholder="https://www.linkedin.com/in/kullaniciadi">
+                            </div>
+                            
+                            <div class="form-group twitter-link" style="display: none;">
+                                <label for="twitterUrl">Twitter URL</label>
+                                <input type="text" id="twitterUrl" placeholder="https://twitter.com/kullaniciadi">
+                            </div>
+                            
+                            <div class="form-group facebook-link" style="display: none;">
+                                <label for="facebookUrl">Facebook URL</label>
+                                <input type="text" id="facebookUrl" placeholder="https://www.facebook.com/kullaniciadi">
+                            </div>
+                            
+                            <div class="form-group instagram-link" style="display: none;">
+                                <label for="instagramUrl">Instagram URL</label>
+                                <input type="text" id="instagramUrl" placeholder="https://www.instagram.com/kullaniciadi">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-header">
+                            <h3>İmza Önizleme</h3>
+                            <div class="preview-actions">
+                                <button id="generateBtn">İmza Oluştur</button>
+                                <button id="copyBtn">HTML Kopyala</button>
+                                <button id="saveBtn">Kaydet</button>
+                            </div>
+                        </div>
+                        <div class="signature-preview" id="signaturePreview">
+                            <p>İmzanızı oluşturmak için yukarıdaki bilgileri doldurun ve "İmza Oluştur" butonuna tıklayın.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Tasarım Ayarları</h3>
+                        <div class="form-group">
+                            <label for="template">İmza Şablonu</label>
+                            <select id="template">
+                                <option value="simple">Basit</option>
+                                <option value="professional">Profesyonel</option>
+                                <option value="modern">Modern</option>
+                                <option value="minimal">Minimal</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="font">Yazı Tipi</label>
+                            <select id="font">
+                                <option value="Arial">Arial</option>
+                                <option value="Roboto">Roboto</option>
+                                <option value="Open Sans">Open Sans</option>
+                                <option value="Lato">Lato</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Courier New">Courier New</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="primaryColor">Ana Renk</label>
+                            <div class="color-input">
+                                <input type="color" id="primaryColor" value="#3498db">
+                                <input type="text" id="primaryColorHex" value="#3498db" placeholder="Renk kodu (örn: #3498db)">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="secondaryColor">İkincil Renk</label>
+                            <div class="color-input">
+                                <input type="color" id="secondaryColor" value="#2c3e50">
+                                <input type="text" id="secondaryColorHex" value="#2c3e50" placeholder="Renk kodu (örn: #2c3e50)">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fontSize">Yazı Boyutu</label>
+                            <select id="fontSize">
+                                <option value="12px">Küçük (12px)</option>
+                                <option value="14px" selected>Orta (14px)</option>
+                                <option value="16px">Büyük (16px)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="logoUrl">Logo URL (isteğe bağlı)</label>
+                            <input type="text" id="logoUrl" placeholder="https://website.com/logo.png">
+                            <input type="file" id="logoFile" accept="image/*" style="margin-top: 10px;">
+                        </div>
+                        
+                        <div class="logo-size-controls">
+                            <h4>Logo Boyutu</h4>
+                            <div class="size-control">
+                                <label for="logoSize">Boyut:</label>
+                                <input type="range" id="logoSize" min="20" max="200" value="80" class="slider">
+                                <span id="logoSizeValue">80px</span>
+                            </div>
+                            <div class="size-control">
+                                <label for="logoMaintainRatio">En-Boy Oranını Koru:</label>
+                                <input type="checkbox" id="logoMaintainRatio" checked>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="avatarUrl">Profil Resmi URL (isteğe bağlı)</label>
+                            <input type="text" id="avatarUrl" placeholder="https://website.com/avatar.jpg">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="disclaimer">Yasal Uyarı (isteğe bağlı)</label>
+                            <textarea id="disclaimer" rows="3" placeholder="Bu e-posta ve ekleri gizli bilgiler içerebilir..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="templates">
+                <h3>Şablon Seçin</h3>
+                <p>İmzanız için bir şablon seçin. Seçilen şablonu özelleştirebilirsiniz.</p>
+                
+                <div class="template-grid">
+                    <div class="template selected" data-template="simple">
+                        <h4>Basit</h4>
+                        <div style="font-family: Arial; font-size: 14px;">
+                            <div style="color: #3498db; font-weight: bold;">Ad Soyad</div>
+                            <div>Pozisyon | Şirket</div>
+                            <div>E-posta | Telefon</div>
+                            <div>Website | Adres</div>
+                        </div>
+                    </div>
+                    
+                    <div class="template" data-template="professional">
+                        <h4>Profesyonel</h4>
+                        <div style="font-family: Arial; font-size: 14px;">
+                            <table>
+                                <tr>
+                                    <td style="vertical-align: top; padding-right: 15px;">
+                                        <div style="width: 50px; height: 50px; background: #ddd; border-radius: 50%;"></div>
+                                    </td>
+                                    <td>
+                                        <div style="color: #3498db; font-weight: bold;">Ad Soyad</div>
+                                        <div>Pozisyon</div>
+                                        <div>Şirket</div>
+                                        <div>E-posta | Telefon</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="template" data-template="modern">
+                        <h4>Modern</h4>
+                        <div style="font-family: Arial; font-size: 14px;">
+                            <div style="padding-left: 10px; border-left: 4px solid #3498db;">
+                                <div style="font-weight: bold; font-size: 16px;">Ad Soyad</div>
+                                <div style="color: #777;">Pozisyon | Şirket</div>
+                                <div>E-posta | Telefon</div>
+                                <div>Website</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="template" data-template="minimal">
+                        <h4>Minimal</h4>
+                        <div style="font-family: Arial; font-size: 14px;">
+                            <div style="font-weight: bold;">Ad Soyad</div>
+                            <div style="color: #777;">Pozisyon, Şirket</div>
+                            <div>E-posta</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="settings">
+                <h3>Kayıtlı İmzalar</h3>
+                <p>Kaydettiğiniz imzalar burada listelenir. Bir imzayı yüklemek için üzerine tıklayın.</p>
+                
+                <div id="savedSignaturesList">
+                    <p>Henüz kaydedilmiş imza bulunmuyor.</p>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="exportAllBtn">Tüm İmzaları Dışa Aktar</button>
+                    <button id="importSignaturesBtn">İmzaları İçe Aktar</button>
+                    <input type="file" id="importFile" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
