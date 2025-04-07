@@ -1571,8 +1571,6 @@ async function loadSignatureFromCloud(id) {
             return;
         }
         
-        console.log('Buluttan imza yükleniyor, ID:', id);
-        
         const response = await fetch(`${API_URL}/users/signatures/${id}`, {
             method: 'GET',
             headers: {
@@ -1580,51 +1578,13 @@ async function loadSignatureFromCloud(id) {
             }
         });
         
-        console.log('Tekil imza API yanıtı status:', response.status);
-        
-        // Önce response'u text olarak al
-        const responseText = await response.text();
-        console.log('Tekil imza yanıtı (ham):', responseText);
-        
         if (!response.ok) {
-            // Eğer yanıt başarısız ve JSON formatındaysa, hata detayını göster
-            try {
-                const errorData = JSON.parse(responseText);
-                console.error('Tekil imza yükleme hatası:', errorData);
-                throw new Error(errorData.error || `İmza yüklenemedi (${response.status}: ${response.statusText})`);
-            } catch (parseError) {
-                // JSON parse edilemiyorsa ham hata mesajını göster
-                console.error('Yanıt JSON formatında değil:', parseError);
-                throw new Error(`İmza yüklenemedi (${response.status}: ${response.statusText})`);
-            }
+            throw new Error(`İmza yüklenemedi (${response.status})`);
         }
         
-        // Boş yanıt kontrolü
-        if (!responseText || responseText.trim() === '') {
-            console.error('API boş yanıt döndü');
-            throw new Error('API boş yanıt döndü');
-        }
-        
-        // JSON parse etmeyi dene
-        try {
-            // API'den gelen yanıtı parse et
-            const responseData = JSON.parse(responseText);
-            console.log('İmza verisi alındı (ham):', responseData);
-            
-            // API'den gelen data'yı normalize et
-            let signature = normalizeSignatureData(responseData);
-            console.log('İmza verisi normalize edildi:', signature);
-            
-            // Form alanlarını güncelle
-            switchTab('editor'); // Önce editör sekmesine geç
-            loadSignatureToForm(signature);
-            
-            // Kullanıcıya bilgi ver
-            alert(`"${signature.name || 'İsimsiz imza'}" başarıyla yüklendi ve düzenleyicide açıldı.`);
-        } catch (parseError) {
-            console.error('JSON parse hatası:', parseError, 'Ham yanıt:', responseText);
-            throw new Error('API yanıtı geçerli JSON değil');
-        }
+        const signature = await response.json();
+        switchTab('editor'); // Editör sekmesine geç
+        loadSignatureToForm(signature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
         alert('İmza yüklenemedi: ' + error.message);
@@ -1689,14 +1649,9 @@ function normalizeSignatureData(data) {
 
 // Form verilerini doldur
 function loadSignatureToForm(signature) {
-    console.log('loadSignatureToForm çağrıldı, gelen veri:', signature);
-    
     try {
-        // Öğeleri sıfırlayalım, böylece önceki veriler karışmaz
+        // Öğeleri sıfırlayalım
         resetForm();
-        
-        // İmza nesnesinin içeriğini loglayalım
-        console.log('İmza nesnesindeki anahtarlar:', Object.keys(signature));
         
         // Temel alanları doldur
         document.getElementById('name').value = signature.name || '';
@@ -1707,9 +1662,8 @@ function loadSignatureToForm(signature) {
         document.getElementById('website').value = signature.website || '';
         document.getElementById('address').value = signature.address || '';
         
-        // Temel stil ayarları
-        let templateValue = signature.template || 'simple';
-        document.getElementById('template').value = templateValue;
+        // Şablon ve stil ayarları
+        document.getElementById('template').value = signature.template || 'simple';
         document.getElementById('font').value = signature.font || 'Arial';
         document.getElementById('fontSize').value = signature.fontSize || '14px';
         document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
@@ -1717,10 +1671,10 @@ function loadSignatureToForm(signature) {
         document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
         document.getElementById('secondaryColorHex').value = signature.secondaryColor || '#2c3e50';
         
-        // Şablon seçimini görsel olarak güncelle
+        // Şablon seçimini güncelle
         document.querySelectorAll('.template').forEach(template => {
             template.classList.remove('selected');
-            if (template.getAttribute('data-template') === templateValue) {
+            if (template.getAttribute('data-template') === (signature.template || 'simple')) {
                 template.classList.add('selected');
             }
         });
@@ -1730,13 +1684,8 @@ function loadSignatureToForm(signature) {
         document.getElementById('avatarUrl').value = signature.avatarUrl || '';
         document.getElementById('disclaimer').value = signature.disclaimer || '';
         
-        // Logo boyutu ayarları
-        if (typeof signature.logoSize !== 'undefined') {
-            logoSize = signature.logoSize;
-        } else {
-            logoSize = 80; // Varsayılan değer
-        }
-        
+        // Logo boyut ayarları
+        logoSize = signature.logoSize || 80;
         document.getElementById('logoSize').value = logoSize;
         document.getElementById('logoSizeValue').textContent = logoSize + 'px';
         
