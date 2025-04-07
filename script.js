@@ -1142,15 +1142,15 @@ async function updateSavedSignaturesList() {
         
         // Yerel imzaları al
         const localSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-        console.log('Yerel imzalar:', localSignatures.length);
+        console.log('Yerel imzalar sayısı:', localSignatures.length);
         
         // Bulut imzalarını al (eğer kullanıcı giriş yapmışsa)
         let cloudSignatures = [];
         if (currentUser && currentUser.token) {
             try {
-                console.log('Bulut imzalarını yüklemeye çalışıyor...');
+                console.log('Bulut imzalarını yüklemeye başlanıyor...');
                 cloudSignatures = await loadSignaturesFromCloud();
-                console.log('Yüklenen bulut imzaları:', cloudSignatures);
+                console.log('Bulut imzaları başarıyla yüklendi, imza sayısı:', Array.isArray(cloudSignatures) ? cloudSignatures.length : 'Dizi değil');
                 
                 // Olası özel veri yapılarını kontrol et
                 if (!Array.isArray(cloudSignatures) && typeof cloudSignatures === 'object') {
@@ -1160,7 +1160,7 @@ async function updateSavedSignaturesList() {
                     const possibleArrayFields = ['signatures', 'items', 'data', 'results'];
                     for (const field of possibleArrayFields) {
                         if (cloudSignatures[field] && Array.isArray(cloudSignatures[field])) {
-                            console.log(`'${field}' alanından dizi bulundu:`, cloudSignatures[field]);
+                            console.log(`'${field}' alanından dizi bulundu, eleman sayısı:`, cloudSignatures[field].length);
                             cloudSignatures = cloudSignatures[field];
                             break;
                         }
@@ -1176,30 +1176,55 @@ async function updateSavedSignaturesList() {
                                 id,
                                 ...data
                             }));
-                            console.log('Nesneden dönüştürülen dizi:', cloudSignatures);
+                            console.log('Nesneden dönüştürülen dizi sayısı:', cloudSignatures.length);
                         } else {
                             // Son çare
+                            console.error('Nesne dizi formatına dönüştürülemedi, boş dizi kullanılıyor');
                             cloudSignatures = [];
                         }
                     }
                 }
                 
                 // Data integrity check - Her imzanın gerekli alanları var mı?
-                cloudSignatures = cloudSignatures.filter(signature => {
-                    // En azından id ve html kontrolü
-                    if (!signature || !signature.id || !signature.html) {
-                        console.warn('Eksik veriye sahip imza yoksayıldı:', signature);
-                        return false;
+                if (Array.isArray(cloudSignatures)) {
+                    const originalLength = cloudSignatures.length;
+                    cloudSignatures = cloudSignatures.filter(signature => {
+                        // En azından id ve html kontrolü
+                        if (!signature) {
+                            console.warn('null veya undefined imza verisi yoksayıldı');
+                            return false;
+                        }
+                        
+                        if (!signature.id) {
+                            console.warn('ID değeri olmayan imza yoksayıldı:', JSON.stringify(signature).substring(0, 50) + '...');
+                            return false;
+                        }
+                        
+                        if (!signature.html) {
+                            console.warn('HTML içeriği olmayan imza yoksayıldı, ID:', signature.id);
+                            return false;
+                        }
+                        
+                        return true;
+                    });
+                    
+                    if (originalLength !== cloudSignatures.length) {
+                        console.log(`Veri doğrulama sonrası ${originalLength} imzadan ${cloudSignatures.length} tanesi kaldı.`);
                     }
-                    return true;
-                });
+                } else {
+                    console.error('Bulut imzaları dizi formatında değil, boş dizi kullanılıyor');
+                    cloudSignatures = [];
+                }
                 
-                console.log('İşlenmiş bulut imzaları:', cloudSignatures.length);
+                console.log('İşlenmiş bulut imzaları sayısı:', cloudSignatures.length);
             } catch (error) {
                 console.error('Buluttan imzalar yüklenemedi:', error);
                 // Hata mesajını göster
-                savedSignaturesList.innerHTML = `<p>Bulut imzaları yüklenirken hata oluştu: ${error.message}</p>
-                <p>Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>`;
+                savedSignaturesList.innerHTML = `
+                    <div class="error-message">
+                        <p><strong>Bulut imzaları yüklenirken hata oluştu:</strong> ${error.message}</p>
+                        <p>Yerel imzalarınız gösteriliyor.</p>
+                    </div>`;
                 
                 // 3 saniye sonra sadece yerel imzaları göster
                 setTimeout(() => {
@@ -1207,6 +1232,8 @@ async function updateSavedSignaturesList() {
                 }, 3000);
                 return;
             }
+        } else {
+            console.log('Kullanıcı giriş yapmamış, sadece yerel imzalar kullanılıyor');
         }
         
         // İmzaları göster
@@ -1214,7 +1241,11 @@ async function updateSavedSignaturesList() {
         
     } catch (error) {
         console.error('İmza listesi güncellenirken hata:', error);
-        savedSignaturesList.innerHTML = '<p>İmzalar yüklenirken bir hata oluştu.</p>';
+        savedSignaturesList.innerHTML = `
+            <div class="error-message">
+                <p><strong>İmzalar yüklenirken bir hata oluştu:</strong> ${error.message}</p>
+                <p>Lütfen sayfayı yenileyin ve tekrar deneyin.</p>
+            </div>`;
     }
 }
 
@@ -1231,44 +1262,75 @@ function renderSignaturesList(localSignatures, cloudSignatures) {
     let html = '<div class="saved-signatures-container">';
     
     // Bulut imzaları göster
-    if (cloudSignatures.length > 0) {
+    if (cloudSignatures && cloudSignatures.length > 0) {
         html += '<h4>Bulut İmzalarınız</h4>';
         html += '<div class="saved-signatures-grid">';
         
-        cloudSignatures.forEach((signature) => {
-            html += `
-                <div class="saved-signature" data-id="${signature.id}" data-type="cloud">
-                    <div class="signature-name">${signature.name || 'İsimsiz İmza'}</div>
-                    <div class="signature-preview">${signature.html}</div>
-                    <div class="signature-actions">
-                        <button class="load-signature" data-id="${signature.id}" data-type="cloud">Yükle</button>
-                        <button class="delete-signature" data-id="${signature.id}" data-type="cloud">Sil</button>
-                    </div>
-                </div>
-            `;
-        });
+        try {
+            cloudSignatures.forEach((signature) => {
+                try {
+                    if (!signature || !signature.id) {
+                        console.warn('Geçersiz bulut imzası, atlanıyor:', signature);
+                        return; // forEach içinde continue gibi davranır
+                    }
+                    
+                    // Bu imza güvenli bir şekilde eklenebilir mi?
+                    const signatureName = signature.name || 'İsimsiz İmza';
+                    const signatureHtml = signature.html || '<div>İmza içeriği yüklenemedi</div>';
+                    
+                    html += `
+                        <div class="saved-signature" data-id="${signature.id}" data-type="cloud">
+                            <div class="signature-name">${signatureName}</div>
+                            <div class="signature-preview">${signatureHtml}</div>
+                            <div class="signature-actions">
+                                <button class="load-signature" data-id="${signature.id}" data-type="cloud">Yükle</button>
+                                <button class="delete-signature" data-id="${signature.id}" data-type="cloud">Sil</button>
+                            </div>
+                        </div>
+                    `;
+                } catch (err) {
+                    console.error('Bir bulut imzası işlenirken hata:', err, signature);
+                }
+            });
+        } catch (err) {
+            console.error('Bulut imzaları işlenirken hata oluştu:', err);
+            html += '<p>Bulut imzaları gösterilirken bir hata oluştu.</p>';
+        }
         
         html += '</div>';
     }
     
     // Yerel imzaları göster
-    if (localSignatures.length > 0) {
+    if (localSignatures && localSignatures.length > 0) {
         html += '<h4>Yerel İmzalarınız</h4>';
         html += '<div class="saved-signatures-grid">';
         
-        localSignatures.forEach((signature, index) => {
-            html += `
-                <div class="saved-signature" data-index="${index}" data-type="local">
-                    <div class="signature-name">${signature.name || 'İsimsiz İmza'}</div>
-                    <div class="signature-preview">${signature.html}</div>
-                    <div class="signature-actions">
-                        <button class="load-signature" data-index="${index}" data-type="local">Yükle</button>
-                        <button class="delete-signature" data-index="${index}" data-type="local">Sil</button>
-                        ${currentUser && currentUser.token ? `<button class="upload-signature" data-index="${index}">Buluta Yükle</button>` : ''}
-                    </div>
-                </div>
-            `;
-        });
+        try {
+            localSignatures.forEach((signature, index) => {
+                try {
+                    // Bu imza güvenli bir şekilde eklenebilir mi?
+                    const signatureName = signature.name || 'İsimsiz İmza';
+                    const signatureHtml = signature.html || '<div>İmza içeriği yüklenemedi</div>';
+                    
+                    html += `
+                        <div class="saved-signature" data-index="${index}" data-type="local">
+                            <div class="signature-name">${signatureName}</div>
+                            <div class="signature-preview">${signatureHtml}</div>
+                            <div class="signature-actions">
+                                <button class="load-signature" data-index="${index}" data-type="local">Yükle</button>
+                                <button class="delete-signature" data-index="${index}" data-type="local">Sil</button>
+                                ${currentUser && currentUser.token ? `<button class="upload-signature" data-index="${index}">Buluta Yükle</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                } catch (err) {
+                    console.error('Bir yerel imza işlenirken hata:', err, signature);
+                }
+            });
+        } catch (err) {
+            console.error('Yerel imzalar işlenirken hata oluştu:', err);
+            html += '<p>Yerel imzalar gösterilirken bir hata oluştu.</p>';
+        }
         
         html += '</div>';
     }
@@ -1346,13 +1408,21 @@ async function loadSignaturesFromCloud() {
         console.log('API Yanıtı Status:', response.status);
         
         if (!response.ok) {
-            const data = await response.json();
-            console.error('API Hata Yanıtı:', data);
-            throw new Error(data.error || 'İmzalar yüklenemedi');
+            const errorText = await response.text();
+            console.error('API Hata Yanıt Metni:', errorText);
+            
+            try {
+                const errorData = JSON.parse(errorText);
+                console.error('API Hata Detayı:', errorData);
+                throw new Error(errorData.error || 'İmzalar yüklenemedi');
+            } catch (parseError) {
+                console.error('Hata yanıtı JSON değil:', parseError);
+                throw new Error(`İmzalar yüklenemedi. Status: ${response.status}, Yanıt: ${errorText.substring(0, 100)}...`);
+            }
         }
         
         const responseText = await response.text();
-        console.log('API Yanıt (text):', responseText);
+        console.log('API Yanıt (ham metin):', responseText.substring(0, 200) + '...');
         
         // Boş yanıt kontrolü
         if (!responseText || responseText.trim() === '') {
@@ -1362,30 +1432,58 @@ async function loadSignaturesFromCloud() {
         
         try {
             const signatures = JSON.parse(responseText);
-            console.log('İşlenen imzalar:', signatures);
+            console.log('İşlenen imzalar türü:', typeof signatures);
             
-            // API yanıt yapısı kontrolü
+            if (typeof signatures === 'object') {
+                console.log('İmzalar obje anahtarları:', Object.keys(signatures));
+            }
+            
             if (Array.isArray(signatures)) {
+                console.log('Dizi uzunluğu:', signatures.length);
+                if (signatures.length > 0) {
+                    console.log('İlk imza örneği:', JSON.stringify(signatures[0]).substring(0, 100) + '...');
+                }
                 return signatures;
             } else if (signatures.signatures && Array.isArray(signatures.signatures)) {
+                console.log('signatures alanı dizi uzunluğu:', signatures.signatures.length);
                 return signatures.signatures;
             } else if (signatures.items && Array.isArray(signatures.items)) {
+                console.log('items alanı dizi uzunluğu:', signatures.items.length);
                 return signatures.items;
+            } else if (signatures.data && Array.isArray(signatures.data)) {
+                console.log('data alanı dizi uzunluğu:', signatures.data.length);
+                return signatures.data;
             } else {
-                console.warn('Beklenmeyen API yanıt formatı:', signatures);
-                // Özel işlem denemesi
+                console.warn('Beklenmeyen API yanıt formatı:', JSON.stringify(signatures).substring(0, 100) + '...');
+                
+                // Objeden dizi çıkarma denemeleri
                 if (typeof signatures === 'object') {
-                    const possibleArrays = Object.values(signatures).filter(val => Array.isArray(val));
-                    if (possibleArrays.length > 0) {
-                        console.log('Objeden dizi çıkarıldı:', possibleArrays[0]);
-                        return possibleArrays[0];
+                    // Anahtar-değer çiftlerinden dizi oluşturma
+                    const entries = Object.entries(signatures);
+                    if (entries.length > 0 && typeof entries[0][1] === 'object') {
+                        console.log('Objeden dizi oluşturuluyor, anahtar-değer çiftlerinden');
+                        const signatureArray = entries.map(([id, data]) => ({
+                            id,
+                            ...data
+                        }));
+                        console.log('Oluşturulan dizi uzunluğu:', signatureArray.length);
+                        return signatureArray;
+                    }
+                    
+                    // Objedeki tüm dizi türündeki değerleri bul
+                    const arrayValues = Object.values(signatures).filter(val => Array.isArray(val));
+                    if (arrayValues.length > 0) {
+                        console.log('Objeden ilk dizi değeri kullanılıyor, uzunluk:', arrayValues[0].length);
+                        return arrayValues[0];
                     }
                 }
+                
+                console.error('Dizi formatına dönüştürülemedi, boş dizi döndürülüyor');
                 return [];
             }
         } catch (parseError) {
             console.error('JSON parse hatası:', parseError);
-            throw new Error('API yanıtı geçerli JSON değil');
+            throw new Error('API yanıtı geçerli JSON değil: ' + responseText.substring(0, 50) + '...');
         }
     } catch (error) {
         console.error('Buluttan yükleme hatası:', error);
