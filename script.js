@@ -179,6 +179,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         reader.onload = function(e) {
             // Base64 olarak URL input'una yaz
             document.getElementById('logoUrl').value = e.target.result;
+            document.querySelector('.logo-size-controls').style.display = 'block';
             generateSignature(); // Otomatik önizleme güncelle
         };
         reader.readAsDataURL(file);
@@ -321,6 +322,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('facebook').addEventListener('change', updateSocialLinksVisibility);
     document.getElementById('instagram').addEventListener('change', updateSocialLinksVisibility);
     
+    // Sosyal medya linklerini dinleyelim
+    document.getElementById('linkedinUrl').addEventListener('input', generateSignature);
+    document.getElementById('twitterUrl').addEventListener('input', generateSignature);
+    document.getElementById('facebookUrl').addEventListener('input', generateSignature);
+    document.getElementById('instagramUrl').addEventListener('input', generateSignature);
+    
     // Sayfa yüklendiğinde sosyal medya linklerinin görünürlüğünü güncelle
     updateSocialLinksVisibility();
 
@@ -385,7 +392,7 @@ function generateSignature() {
         case 'modern':
             signatureHTML = generateModernTemplate(data, fontFamily);
             break;
-        case 'min_minimal':
+        case 'minimal':
             signatureHTML = generateMinimalTemplate(data, fontFamily);
             break;
         default:
@@ -431,33 +438,26 @@ function generateSimpleTemplate(data, fontFamily) {
     }
     
     // Sosyal medya ikonları
-    let hasSocialMedia = false;
-    let socialHTML = '<div style="margin-top: 10px;">';
+    const socialMedia = [];
     
-    if (data.linkedin.enabled && data.linkedin.url) {
-        socialHTML += `<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`;
-        hasSocialMedia = true;
+    if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
     }
     
-    if (data.twitter.enabled && data.twitter.url) {
-        socialHTML += `<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`;
-        hasSocialMedia = true;
+    if (data.twitter && data.twitter.enabled && data.twitter.url) {
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
     }
     
-    if (data.facebook.enabled && data.facebook.url) {
-        socialHTML += `<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`;
-        hasSocialMedia = true;
+    if (data.facebook && data.facebook.enabled && data.facebook.url) {
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
     }
     
-    if (data.instagram.enabled && data.instagram.url) {
-        socialHTML += `<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`;
-        hasSocialMedia = true;
+    if (data.instagram && data.instagram.enabled && data.instagram.url) {
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
     }
     
-    socialHTML += '</div>';
-    
-    if (hasSocialMedia) {
-        html += socialHTML;
+    if (socialMedia.length > 0) {
+        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
     }
     
     // Yasal uyarı
@@ -491,6 +491,30 @@ function generateProfessionalTemplate(data, fontFamily) {
     html += `<div>${data.email} | ${data.phone}</div>`;
     html += `<div>${data.website}</div>`;
     html += `<div>${data.address}</div>`;
+    
+    // Sosyal medya ikonları
+    const socialMedia = [];
+    
+    if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.twitter && data.twitter.enabled && data.twitter.url) {
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.facebook && data.facebook.enabled && data.facebook.url) {
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.instagram && data.instagram.enabled && data.instagram.url) {
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (socialMedia.length > 0) {
+        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+    }
+    
     html += '</td>';
     
     html += '</tr></table>';
@@ -509,6 +533,30 @@ function generateModernTemplate(data, fontFamily) {
     html += `<div>${data.email} | ${data.phone}</div>`;
     html += `<div>${data.website}</div>`;
     html += `<div>${data.address}</div>`;
+    
+    // Sosyal medya ikonları
+    const socialMedia = [];
+    
+    if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.twitter && data.twitter.enabled && data.twitter.url) {
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.facebook && data.facebook.enabled && data.facebook.url) {
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.instagram && data.instagram.enabled && data.instagram.url) {
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (socialMedia.length > 0) {
+        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+    }
+    
     html += '</div>';
 
     if (data.disclaimer) {
@@ -523,6 +571,30 @@ function generateMinimalTemplate(data, fontFamily) {
     html += `<div style="font-weight: bold;">${data.name}</div>`;
     html += `<div style="color: #777;">${data.title}, ${data.company}</div>`;
     html += `<div>${data.email}</div>`;
+    
+    // Sosyal medya ikonları
+    const socialMedia = [];
+    
+    if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.twitter && data.twitter.enabled && data.twitter.url) {
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.facebook && data.facebook.enabled && data.facebook.url) {
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (data.instagram && data.instagram.enabled && data.instagram.url) {
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+    }
+    
+    if (socialMedia.length > 0) {
+        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+    }
+    
     html += '</div>';
 
     if (data.disclaimer) {
