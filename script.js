@@ -50,27 +50,147 @@ document.addEventListener('DOMContentLoaded', async function() {
     // HTML kopyala butonu
     document.getElementById('copyBtn').addEventListener('click', function() {
         const signaturePreview = document.getElementById('signaturePreview');
+        
+        // Seçim ve kopyalama için yardımcı fonksiyon
+        function selectElementContents(el) {
+            // Geçerli seçimi temizle
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                
+                // İçeriği seç
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                selection.addRange(range);
+                
+                // Kopyala
+                document.execCommand('copy');
+                
+                // Seçimi temizle
+                selection.removeAllRanges();
+                return true;
+            }
+            return false;
+        }
+        
+        // Doğrudan HTML'i seç ve kopyala
+        const isCopied = selectElementContents(signaturePreview);
+        
+        if (isCopied) {
+            alert('İmza kopyalandı! Outlook\'a yapıştırırken, lütfen "Zengin Metin" veya "HTML" formatında yapıştırın.');
+        } else {
+            // Yedek metod - daha önce kullanılan textarea yöntemi
+            const htmlContent = signaturePreview.innerHTML;
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = htmlContent;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextarea);
+            alert('İmza kopyalandı! Outlook\'a yapıştırırken, lütfen "Zengin Metin" veya "HTML" formatında yapıştırın.');
+        }
+    });
+    
+    // Kodu göster butonu
+    document.getElementById('viewCodeBtn').addEventListener('click', function() {
+        const signaturePreview = document.getElementById('signaturePreview');
         const htmlContent = signaturePreview.innerHTML;
         
-        // HTML içeriğini kopyala
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlContent;
-        document.body.appendChild(tempDiv);
+        // HTML içeriğini güzelleştir/format
+        const formattedHTML = formatHTML(htmlContent);
         
-        // Tüm içeriği seç
-        const range = document.createRange();
-        range.selectNode(tempDiv);
-        window.getSelection().removeAllRanges();
-        window.getSelection().addRange(range);
+        // Popup oluştur
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        modal.style.zIndex = '1000';
+        modal.style.display = 'flex';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
         
-        // Kopyala
-        document.execCommand('copy');
+        // Modal içeriği
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.backgroundColor = '#fff';
+        modalContent.style.padding = '20px';
+        modalContent.style.borderRadius = '5px';
+        modalContent.style.maxWidth = '80%';
+        modalContent.style.maxHeight = '80%';
+        modalContent.style.overflow = 'auto';
+        modalContent.style.position = 'relative';
         
-        // Geçici div'i kaldır
-        document.body.removeChild(tempDiv);
-        window.getSelection().removeAllRanges();
+        // Başlık
+        const title = document.createElement('h3');
+        title.textContent = 'HTML Kodu';
+        title.style.marginTop = '0';
         
-        alert('İmza panoya kopyalandı! Artık e-posta istemcinize yapıştırabilirsiniz.');
+        // Kapat butonu
+        const closeBtn = document.createElement('span');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '10px';
+        closeBtn.style.right = '10px';
+        closeBtn.style.fontSize = '24px';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = function() {
+            document.body.removeChild(modal);
+        };
+        
+        // Kod alanı
+        const codeView = document.createElement('pre');
+        codeView.style.whiteSpace = 'pre-wrap';
+        codeView.style.fontFamily = 'monospace';
+        codeView.style.fontSize = '12px';
+        codeView.style.backgroundColor = '#f5f5f5';
+        codeView.style.padding = '10px';
+        codeView.style.borderRadius = '4px';
+        codeView.style.overflowX = 'auto';
+        codeView.style.maxHeight = 'calc(80vh - 100px)';
+        codeView.textContent = formattedHTML;
+        
+        // Kopyala butonu
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Kodu Kopyala';
+        copyBtn.style.marginTop = '10px';
+        copyBtn.style.padding = '8px 16px';
+        copyBtn.style.backgroundColor = '#3498db';
+        copyBtn.style.border = 'none';
+        copyBtn.style.borderRadius = '4px';
+        copyBtn.style.color = 'white';
+        copyBtn.style.cursor = 'pointer';
+        copyBtn.onclick = function() {
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = formattedHTML;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextarea);
+            copyBtn.textContent = 'Kopyalandı!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Kodu Kopyala';
+            }, 2000);
+        };
+        
+        // DOM'a ekle
+        modalContent.appendChild(closeBtn);
+        modalContent.appendChild(title);
+        modalContent.appendChild(codeView);
+        modalContent.appendChild(copyBtn);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // ESC tuşu ile kapatma
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.body.contains(modal)) {
+                document.body.removeChild(modal);
+            }
+        });
     });
     
     // İmzayı kaydet butonu
@@ -360,6 +480,40 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
+    // Outlook için özel kopya butonu
+    document.getElementById('outlookCopyBtn').addEventListener('click', function() {
+        const signaturePreview = document.getElementById('signaturePreview');
+        const htmlContent = signaturePreview.innerHTML;
+        
+        // Outlook için özel div oluştur
+        const outlookDiv = document.createElement('div');
+        outlookDiv.setAttribute('contenteditable', 'true');
+        outlookDiv.innerHTML = htmlContent;
+        outlookDiv.style.position = 'fixed';
+        outlookDiv.style.left = '-9999px';
+        document.body.appendChild(outlookDiv);
+        
+        // İçeriği seç
+        const range = document.createRange();
+        range.selectNodeContents(outlookDiv);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Kopyala
+        const successful = document.execCommand('copy');
+        
+        // Geçici div'i kaldır
+        document.body.removeChild(outlookDiv);
+        
+        // Bildiri göster
+        if (successful) {
+            alert('İmza Outlook için kopyalandı! Outlook\'ta imza ayarlarına yapıştırabilirsiniz.');
+        } else {
+            alert('Kopyalama başarısız oldu. Lütfen tekrar deneyin.');
+        }
+    });
+
     // Sayfa yüklendiğinde oturum kontrolü
     await checkSession();
 });
@@ -369,6 +523,10 @@ function generateSignature() {
     const data = collectFormData();
     const signaturePreview = document.getElementById('signaturePreview');
     const signatureCode = document.getElementById('signatureCode');
+    
+    // Logo boyut kontrollerinin görünürlüğünü ayarla
+    const logoControls = document.querySelector('.logo-size-controls');
+    logoControls.style.display = data.logoUrl ? 'block' : 'none';
     
     let signatureHTML = '';
     
@@ -409,56 +567,113 @@ function generateSignature() {
 
 // Basit şablon oluşturma
 function generateSimpleTemplate(data, fontFamily) {
-    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize};">`;
+    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize}; padding: 0; margin: 0; mso-line-height-rule: exactly;">`;
     
     // Logo varsa ekle
     if (data.logoUrl) {
-        const logoStyle = data.maintainRatio 
-            ? `max-width: ${data.logoSize}px; height: auto; width: ${data.logoSize}px;` 
-            : `width: ${data.logoSize}px; height: ${data.logoSize}px;`;
-        html += `<div style="margin-bottom: 10px;"><img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}" width="${data.logoSize}" height="${data.maintainRatio ? 'auto' : data.logoSize}"></div>`;
+        let logoWidth = data.logoSize;
+        let logoHeight = data.maintainRatio ? 'auto' : data.logoSize;
+        
+        html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; margin-bottom: 10px;">
+            <tr>
+                <td align="left" valign="middle" style="vertical-align: middle;">
+                    <img src="${data.logoUrl}" 
+                        alt="${data.company || 'Şirket'} Logo" 
+                        width="${logoWidth}" 
+                        height="${logoHeight}" 
+                        style="width: ${logoWidth}px; height: ${logoHeight === 'auto' ? 'auto' : logoHeight + 'px'}; display: inline-block; border: 0; -ms-interpolation-mode: bicubic; outline: none; text-decoration: none; vertical-align: middle;">
+                </td>
+            </tr>
+        </table>`;
     }
     
-    // Ad Soyad ve Pozisyon
-    html += `<div style="color: ${data.primaryColor}; font-weight: bold;">${data.name || 'Ad Soyad'}</div>`;
+    // Tablo kullanarak daha uyumlu yapı
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+        <tr>
+            <td style="padding: 0 0 5px 0;">
+                <div style="color: ${data.primaryColor}; font-weight: bold;">${data.name || 'Ad Soyad'}</div>
+            </td>
+        </tr>`;
     
     // Pozisyon ve şirket
     if (data.title || data.company) {
-        html += `<div>${data.title || ''}${data.title && data.company ? ' | ' : ''}${data.company || ''}</div>`;
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.title || ''}${data.title && data.company ? ' | ' : ''}${data.company || ''}</div>
+            </td>
+        </tr>`;
     }
     
     // İletişim bilgileri
     if (data.email || data.phone) {
-        html += `<div>${data.email || ''}${data.email && data.phone ? ' | ' : ''}${data.phone || ''}</div>`;
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.email || ''}${data.email && data.phone ? ' | ' : ''}${data.phone || ''}</div>
+            </td>
+        </tr>`;
     }
     
     // Website ve adres
     if (data.website || data.address) {
-        html += `<div>${data.website || ''}${data.website && data.address ? ' | ' : ''}${data.address || ''}</div>`;
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.website || ''}${data.website && data.address ? ' | ' : ''}${data.address || ''}</div>
+            </td>
+        </tr>`;
     }
     
     // Sosyal medya ikonları
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" 
+                alt="LinkedIn" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg" 
+                alt="Twitter" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" 
+                alt="Facebook" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" 
+                alt="Instagram" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (socialMedia.length > 0) {
-        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+        html += `<tr>
+            <td style="padding: 10px 0 0 0;">
+                ${socialMedia.join('')}
+            </td>
+        </tr>`;
     }
+    
+    html += `</table>`;
     
     // Yasal uyarı
     if (data.disclaimer) {
@@ -471,136 +686,386 @@ function generateSimpleTemplate(data, fontFamily) {
 
 // Profesyonel şablon oluşturma
 function generateProfessionalTemplate(data, fontFamily) {
-    let html = `<table style="font-family: ${fontFamily}; font-size: ${data.fontSize}; border-collapse: collapse; width: 100%;">`;
+    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize}; padding: 0; margin: 0; mso-line-height-rule: exactly;">`;
+    
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">`;
     html += '<tr>';
     
     // Logo sütunu
-    html += '<td style="vertical-align: middle; width: ' + (data.logoSize + 30) + 'px; padding-right: 20px; border-right: 3px solid ' + data.secondaryColor + ';">';
+    html += `<td style="vertical-align: middle; width: ${data.logoSize + 20}px; padding-right: 20px; border-right: 3px solid ${data.secondaryColor}; mso-border-right-alt: solid ${data.secondaryColor} 3pt;">`;
     if (data.logoUrl) {
-        const logoStyle = data.maintainRatio 
-            ? `max-width: ${data.logoSize}px; height: auto; width: ${data.logoSize}px; display: block; margin: 0 auto;` 
-            : `width: ${data.logoSize}px; height: ${data.logoSize}px; display: block; margin: 0 auto;`;
-        html += `<img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}" width="${data.logoSize}" height="${data.maintainRatio ? 'auto' : data.logoSize}">`;
+        let logoWidth = data.logoSize;
+        let logoHeight = data.maintainRatio ? 'auto' : data.logoSize;
+        
+        html += `<img src="${data.logoUrl}" 
+            alt="${data.company || 'Şirket'} Logo" 
+            width="${logoWidth}" 
+            height="${logoHeight}" 
+            style="width: ${logoWidth}px; height: ${logoHeight === 'auto' ? 'auto' : logoHeight + 'px'}; display: block; margin: 0 auto; border: 0; -ms-interpolation-mode: bicubic; outline: none; text-decoration: none; vertical-align: middle;">`;
     }
     html += '</td>';
     
     // Bilgi sütunu
     html += '<td style="vertical-align: middle; padding-left: 20px;">';
-    html += `<div style="color: ${data.primaryColor}; font-weight: bold;">${data.name}</div>`;
-    html += `<div style="color: #777;">${data.title} | ${data.company}</div>`;
-    html += `<div>${data.email} | ${data.phone}</div>`;
-    html += `<div>${data.website}</div>`;
-    html += `<div>${data.address}</div>`;
+    
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">`;
+    
+    // Ad Soyad
+    html += `<tr>
+        <td style="padding: 0 0 5px 0;">
+            <div style="color: ${data.primaryColor}; font-weight: bold;">${data.name || ''}</div>
+        </td>
+    </tr>`;
+    
+    // Pozisyon | Şirket
+    if (data.title || data.company) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div style="color: #777777;">${data.title || ''}${data.title && data.company ? ' | ' : ''}${data.company || ''}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // E-posta | Telefon
+    if (data.email || data.phone) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.email || ''}${data.email && data.phone ? ' | ' : ''}${data.phone || ''}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // Web sitesi
+    if (data.website) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.website}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // Adres
+    if (data.address) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.address}</div>
+            </td>
+        </tr>`;
+    }
     
     // Sosyal medya ikonları
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" 
+                alt="LinkedIn" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg" 
+                alt="Twitter" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" 
+                alt="Facebook" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" 
+                alt="Instagram" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (socialMedia.length > 0) {
-        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+        html += `<tr>
+            <td style="padding: 10px 0 0 0;">
+                ${socialMedia.join('')}
+            </td>
+        </tr>`;
     }
     
-    html += '</td>';
+    html += `</table>`; // İç tablo kapanışı
     
-    html += '</tr></table>';
+    html += '</td>'; // Bilgi sütunu kapanışı
+    
+    html += '</tr></table>'; // Ana tablo kapanışı
 
     if (data.disclaimer) {
         html += `<div style="margin-top: 10px; font-size: 10px; color: ${data.secondaryColor};">${data.disclaimer}</div>`;
     }
 
+    html += '</div>'; // Ana div kapanışı
+    
     return html;
 }
 
 function generateModernTemplate(data, fontFamily) {
-    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize}; padding-left: 10px; border-left: 4px solid ${data.primaryColor};">`;
-    html += `<div style="font-weight: bold; font-size: 16px;">${data.name}</div>`;
-    html += `<div style="color: #777;">${data.title} | ${data.company}</div>`;
-    html += `<div>${data.email} | ${data.phone}</div>`;
-    html += `<div>${data.website}</div>`;
-    html += `<div>${data.address}</div>`;
+    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize}; padding: 0; margin: 0; mso-line-height-rule: exactly;">`;
+    
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">`;
+    html += '<tr>';
+    
+    // Sol kenar çizgisi
+    html += `<td width="4" style="width: 4px; background-color: ${data.primaryColor}; mso-background-color: ${data.primaryColor}; padding: 0;"></td>`;
+    
+    // İçerik sütunu
+    html += '<td style="padding-left: 10px; vertical-align: top;">';
+    
+    // Logo
+    if (data.logoUrl) {
+        let logoWidth = data.logoSize;
+        let logoHeight = data.maintainRatio ? 'auto' : data.logoSize;
+        
+        html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; margin-bottom: 10px;">
+            <tr>
+                <td align="left" valign="middle" style="vertical-align: middle;">
+                    <img src="${data.logoUrl}" 
+                        alt="${data.company || 'Şirket'} Logo" 
+                        width="${logoWidth}" 
+                        height="${logoHeight}" 
+                        style="width: ${logoWidth}px; height: ${logoHeight === 'auto' ? 'auto' : logoHeight + 'px'}; display: inline-block; border: 0; -ms-interpolation-mode: bicubic; outline: none; text-decoration: none; vertical-align: middle;">
+                </td>
+            </tr>
+        </table>`;
+    }
+    
+    // Bilgiler için iç tablo
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">`;
+    
+    // Ad Soyad
+    html += `<tr>
+        <td style="padding: 0 0 5px 0;">
+            <div style="font-weight: bold; font-size: 16px;">${data.name || ''}</div>
+        </td>
+    </tr>`;
+    
+    // Pozisyon | Şirket
+    if (data.title || data.company) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div style="color: #777777;">${data.title || ''}${data.title && data.company ? ' | ' : ''}${data.company || ''}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // E-posta | Telefon
+    if (data.email || data.phone) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.email || ''}${data.email && data.phone ? ' | ' : ''}${data.phone || ''}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // Web sitesi
+    if (data.website) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.website}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // Adres
+    if (data.address) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.address}</div>
+            </td>
+        </tr>`;
+    }
     
     // Sosyal medya ikonları
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" 
+                alt="LinkedIn" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg" 
+                alt="Twitter" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" 
+                alt="Facebook" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" 
+                alt="Instagram" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (socialMedia.length > 0) {
-        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+        html += `<tr>
+            <td style="padding: 10px 0 0 0;">
+                ${socialMedia.join('')}
+            </td>
+        </tr>`;
     }
     
-    html += '</div>';
+    html += `</table>`; // İç tablo kapanışı
+    
+    html += '</td>'; // İçerik sütunu kapanışı
+    
+    html += '</tr></table>'; // Ana tablo kapanışı
 
     if (data.disclaimer) {
         html += `<div style="margin-top: 10px; font-size: 10px; color: ${data.secondaryColor};">${data.disclaimer}</div>`;
     }
 
+    html += '</div>'; // Ana div kapanışı
+    
     return html;
 }
 
 function generateMinimalTemplate(data, fontFamily) {
-    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize};">`;
-    html += `<div style="font-weight: bold;">${data.name}</div>`;
-    html += `<div style="color: #777;">${data.title}, ${data.company}</div>`;
-    html += `<div>${data.email}</div>`;
+    let html = `<div style="font-family: ${fontFamily}; font-size: ${data.fontSize}; padding: 0; margin: 0; mso-line-height-rule: exactly;">`;
+    
+    html += `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">`;
+    
+    // Logo
+    if (data.logoUrl) {
+        let logoWidth = data.logoSize;
+        let logoHeight = data.maintainRatio ? 'auto' : data.logoSize;
+        
+        html += `<tr>
+            <td style="padding: 0 0 10px 0; vertical-align: middle;" align="left" valign="middle">
+                <img src="${data.logoUrl}" 
+                    alt="${data.company || 'Şirket'} Logo" 
+                    width="${logoWidth}" 
+                    height="${logoHeight}" 
+                    style="width: ${logoWidth}px; height: ${logoHeight === 'auto' ? 'auto' : logoHeight + 'px'}; display: inline-block; border: 0; -ms-interpolation-mode: bicubic; outline: none; text-decoration: none; vertical-align: middle;">
+            </td>
+        </tr>`;
+    }
+    
+    // Ad Soyad
+    html += `<tr>
+        <td style="padding: 0 0 5px 0;">
+            <div style="font-weight: bold;">${data.name || ''}</div>
+        </td>
+    </tr>`;
+    
+    // Pozisyon, Şirket
+    if (data.title || data.company) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div style="color: #777777;">${data.title || ''}${data.title && data.company ? ', ' : ''}${data.company || ''}</div>
+            </td>
+        </tr>`;
+    }
+    
+    // E-posta
+    if (data.email) {
+        html += `<tr>
+            <td style="padding: 0 0 5px 0;">
+                <div>${data.email}</div>
+            </td>
+        </tr>`;
+    }
     
     // Sosyal medya ikonları
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" 
+                alt="LinkedIn" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg" 
+                alt="Twitter" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png" 
+                alt="Facebook" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" 
+                alt="Instagram" 
+                width="20" 
+                height="20" 
+                style="width: 20px; height: 20px; display: inline-block; border: 0; -ms-interpolation-mode: bicubic;">
+        </a>`);
     }
     
     if (socialMedia.length > 0) {
-        html += `<div style="margin-top: 10px;">${socialMedia.join('')}</div>`;
+        html += `<tr>
+            <td style="padding: 10px 0 0 0;">
+                ${socialMedia.join('')}
+            </td>
+        </tr>`;
     }
     
-    html += '</div>';
+    html += `</table>`; // Tablo kapanışı
 
     if (data.disclaimer) {
         html += `<div style="margin-top: 10px; font-size: 10px; color: ${data.secondaryColor};">${data.disclaimer}</div>`;
     }
 
+    html += '</div>'; // Ana div kapanışı
+    
     return html;
 }
 
@@ -1004,4 +1469,26 @@ async function verifyEmail(email, code) {
         
         throw error;
     }
+}
+
+// HTML formatı için yardımcı fonksiyon
+function formatHTML(html) {
+    let formatted = '';
+    let indent = '';
+    
+    html.split(/>\s*</).forEach(function(element) {
+        if (element.match(/^\/\w/)) {
+            // Kapanan tag
+            indent = indent.substring(2);
+        }
+        
+        formatted += indent + '<' + element + '>\r\n';
+        
+        if (element.match(/^<?\w[^>]*[^\/]$/) && !element.startsWith("input") && !element.startsWith("img")) {
+            // Açılan tag ve self-closing olmayan
+            indent += '  ';
+        }
+    });
+    
+    return formatted.substring(1, formatted.length - 3);
 }
