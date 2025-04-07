@@ -1649,6 +1649,33 @@ function loadSignatureToForm(signature) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
         
+        // Şablonu belirle - imza yapısını kontrol ederek
+        let detectedTemplate = 'simple'; // varsayılan
+        
+        // Modern şablon kontrolü - kenarlık varsa
+        if (doc.querySelector('td[style*="border-right:"], td[style*="border-left:"], div[style*="border-left:"]')) {
+            detectedTemplate = 'modern';
+        } 
+        // Profesyonel şablon kontrolü - yan yana yerleşim varsa
+        else if (doc.querySelector('table tr td img') && doc.querySelectorAll('table tr td').length > 1) {
+            detectedTemplate = 'professional';
+        }
+        // Minimal şablon kontrolü - daha az bilgi içeren bir yapı
+        else if (doc.querySelectorAll('tr').length <= 3) {
+            detectedTemplate = 'minimal';
+        }
+        
+        // Şablon seçimini güncelle
+        document.getElementById('template').value = detectedTemplate;
+        document.querySelectorAll('.template').forEach(template => {
+            template.classList.remove('selected');
+            if (template.getAttribute('data-template') === detectedTemplate) {
+                template.classList.add('selected');
+            }
+        });
+        
+        console.log('Tespit edilen şablon:', detectedTemplate);
+        
         // Tüm metin içeriğini çıkaralım
         const allTextContent = doc.querySelectorAll('div, span, p, td');
         const allTexts = Array.from(allTextContent).map(el => el.textContent.trim()).filter(t => t);
@@ -1696,7 +1723,11 @@ function loadSignatureToForm(signature) {
                 }
                 
                 // Uzun metin muhtemelen adres
-                else if (text.length > 30 && !document.getElementById('address').value) {
+                else if (text.length > 20 && text.includes(',')) {
+                    document.getElementById('address').value = text;
+                }
+                // Alternatif adres tespiti - birden fazla satır veya boşluk içeren metinler
+                else if ((text.length > 20 && (text.includes('\n') || text.split(' ').length > 4)) && !document.getElementById('address').value) {
                     document.getElementById('address').value = text;
                 }
                 
@@ -1709,6 +1740,19 @@ function loadSignatureToForm(signature) {
                 else if (text.split(' ').length > 1 && !document.getElementById('company').value) {
                     document.getElementById('company').value = text;
                 }
+            }
+        }
+        
+        // HTML içinde doğrudan adres bulma girişimi (genel metinlerden bulunamadıysa)
+        if (!document.getElementById('address').value) {
+            // Adres genellikle bir div veya td içinde olur
+            const possibleAddressElements = Array.from(doc.querySelectorAll('div, td')).filter(el => {
+                const content = el.textContent.trim();
+                return content.length > 20 && (content.includes(',') || content.split(' ').length > 5);
+            });
+            
+            if (possibleAddressElements.length > 0) {
+                document.getElementById('address').value = possibleAddressElements[0].textContent.trim();
             }
         }
         
@@ -1784,13 +1828,13 @@ function loadSignatureToForm(signature) {
         }
         
         // İkincil renk - kenar çizgisi
-        const borderStyle = doc.querySelector('td[style*="border-right: 3px solid"]');
+        const borderStyle = doc.querySelector('[style*="border-right:"], [style*="border-left:"]');
         if (borderStyle) {
             const styleAttr = borderStyle.getAttribute('style');
-            const borderColorMatch = styleAttr.match(/border-right:\s*\d+px\s*solid\s*([^;]+)/);
+            const borderColorMatch = styleAttr.match(/border-(right|left):\s*\d+px\s*solid\s*([^;]+)/);
             
-            if (borderColorMatch && borderColorMatch[1]) {
-                const secondaryColor = borderColorMatch[1].trim();
+            if (borderColorMatch && borderColorMatch[2]) {
+                const secondaryColor = borderColorMatch[2].trim();
                 document.getElementById('secondaryColor').value = secondaryColor;
                 document.getElementById('secondaryColorHex').value = secondaryColor;
             }
@@ -1817,36 +1861,6 @@ function loadSignatureToForm(signature) {
             logoControls.style.display = 'block';
         }
         
-        // İmzanın türünü algıla ve şablonu seç
-        if (borderStyle) {
-            // Büyük olasılıkla modern şablon
-            document.getElementById('template').value = 'modern';
-            document.querySelectorAll('.template').forEach(template => {
-                template.classList.remove('selected');
-                if (template.getAttribute('data-template') === 'modern') {
-                    template.classList.add('selected');
-                }
-            });
-        } else if (doc.querySelector('td[style*="vertical-align: top; padding-right:"]')) {
-            // Büyük olasılıkla profesyonel şablon
-            document.getElementById('template').value = 'professional';
-            document.querySelectorAll('.template').forEach(template => {
-                template.classList.remove('selected');
-                if (template.getAttribute('data-template') === 'professional') {
-                    template.classList.add('selected');
-                }
-            });
-        } else {
-            // Diğer durumda basit şablon
-            document.getElementById('template').value = 'simple';
-            document.querySelectorAll('.template').forEach(template => {
-                template.classList.remove('selected');
-                if (template.getAttribute('data-template') === 'simple') {
-                    template.classList.add('selected');
-                }
-            });
-        }
-        
         // Yasal uyarı metni kontrolü
         const smallTexts = doc.querySelectorAll('div[style*="font-size: 10px"], div[style*="font-size:10px"]');
         if (smallTexts.length > 0) {
@@ -1854,9 +1868,11 @@ function loadSignatureToForm(signature) {
         }
         
         // İmzayı tekrar oluştur
-        generateSignature();
+        setTimeout(() => {
+            generateSignature();
+            console.log('Form alanları başarıyla dolduruldu ve imza oluşturuldu');
+        }, 100);
         
-        console.log('Form alanları başarıyla dolduruldu');
     } catch (error) {
         console.error('Form doldurma hatası:', error);
         alert('İmza yüklenirken bir hata oluştu: ' + error.message);
