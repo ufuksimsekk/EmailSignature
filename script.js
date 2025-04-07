@@ -1634,111 +1634,173 @@ function loadSignatureToForm(signature) {
         // Öğeleri sıfırlayalım, böylece önceki veriler karışmaz
         resetForm();
         
-        // İmza adını ve diğer temel bilgileri direkt olarak alıyoruz
-        if (signature.name) {
-            document.getElementById('name').value = signature.name;
-        }
-        
-        // HTML içeriğini parse et
-        const htmlContent = signature.html;
-        
-        // İmza HTML'ini doğrudan önizlemeye ekleyelim
-        document.getElementById('signaturePreview').innerHTML = htmlContent;
-        
-        // HTML'i parse edelim
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlContent, 'text/html');
-        
-        // Şablonu belirle - imza yapısını kontrol ederek
-        let detectedTemplate = 'simple'; // varsayılan
-        
-        // Modern şablon kontrolü - kenarlık varsa
-        if (doc.querySelector('td[style*="border-right:"], td[style*="border-left:"], div[style*="border-left:"]')) {
-            detectedTemplate = 'modern';
-        } 
-        // Profesyonel şablon kontrolü - yan yana yerleşim varsa
-        else if (doc.querySelector('table tr td img') && doc.querySelectorAll('table tr td').length > 1) {
-            detectedTemplate = 'professional';
-        }
-        // Minimal şablon kontrolü - daha az bilgi içeren bir yapı
-        else if (doc.querySelectorAll('tr').length <= 3) {
-            detectedTemplate = 'minimal';
-        }
+        // Temel alanları doldur
+        document.getElementById('name').value = signature.name || '';
+        document.getElementById('title').value = signature.title || '';
+        document.getElementById('company').value = signature.company || '';
+        document.getElementById('email').value = signature.email || '';
+        document.getElementById('phone').value = signature.phone || '';
+        document.getElementById('website').value = signature.website || '';
+        document.getElementById('address').value = signature.address || '';
+        document.getElementById('font').value = signature.font || 'Arial';
+        document.getElementById('fontSize').value = signature.fontSize || '14px';
+        document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
+        document.getElementById('primaryColorHex').value = signature.primaryColor || '#3498db';
+        document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
+        document.getElementById('secondaryColorHex').value = signature.secondaryColor || '#2c3e50';
+        document.getElementById('logoUrl').value = signature.logoUrl || '';
+        document.getElementById('avatarUrl').value = signature.avatarUrl || '';
+        document.getElementById('disclaimer').value = signature.disclaimer || '';
         
         // Şablon seçimini güncelle
-        document.getElementById('template').value = detectedTemplate;
+        const templateValue = signature.template || 'simple';
+        document.getElementById('template').value = templateValue;
         document.querySelectorAll('.template').forEach(template => {
             template.classList.remove('selected');
-            if (template.getAttribute('data-template') === detectedTemplate) {
+            if (template.getAttribute('data-template') === templateValue) {
                 template.classList.add('selected');
             }
         });
         
-        console.log('Tespit edilen şablon:', detectedTemplate);
+        // Logo boyutu ayarları
+        if (typeof signature.logoSize !== 'undefined') {
+            logoSize = signature.logoSize;
+            document.getElementById('logoSize').value = logoSize;
+            document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+        } else {
+            logoSize = 80; // Varsayılan değer
+            document.getElementById('logoSize').value = logoSize;
+            document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+        }
         
-        // HTML içindeki tüm bölümleri analiz et
-        const allElements = doc.querySelectorAll('div, span, p, td');
+        // Oran koruma ayarları
+        if (typeof signature.maintainRatio !== 'undefined') {
+            maintainRatio = signature.maintainRatio;
+            document.getElementById('logoMaintainRatio').checked = maintainRatio;
+        } else {
+            maintainRatio = true; // Varsayılan değer
+            document.getElementById('logoMaintainRatio').checked = true;
+        }
         
-        // İmza içeriğindeki tüm metin öğelerini topla
-        const allTexts = Array.from(allElements)
-            .map(el => el.textContent.trim())
-            .filter(text => text.length > 0);
+        // Sosyal medya ayarlarını güncelle
+        document.getElementById('linkedin').checked = signature.linkedin?.enabled || false;
+        document.getElementById('twitter').checked = signature.twitter?.enabled || false;
+        document.getElementById('facebook').checked = signature.facebook?.enabled || false;
+        document.getElementById('instagram').checked = signature.instagram?.enabled || false;
         
-        console.log('İmzadaki tüm metinler:', allTexts);
+        document.getElementById('linkedinUrl').value = signature.linkedin?.url || '';
+        document.getElementById('twitterUrl').value = signature.twitter?.url || '';
+        document.getElementById('facebookUrl').value = signature.facebook?.url || '';
+        document.getElementById('instagramUrl').value = signature.instagram?.url || '';
         
-        // Ad soyad, renkli veya kalın yazılı olabilir
-        const nameElement = doc.querySelector('div[style*="color:"][style*="font-weight: bold"], div[style*="color:"][style*="font-weight:bold"]');
+        // Sosyal medya input alanlarını göster/gizle
+        updateSocialLinksVisibility();
+        
+        // Logo kontrollerinin görünürlüğünü logo URL'sine göre ayarla
+        const logoControls = document.querySelector('.logo-size-controls');
+        logoControls.style.display = signature.logoUrl ? 'block' : 'none';
+        
+        // Eğer sadece HTML içerik varsa, onu önizlemeye ekleyelim
+        if (signature.html && (!signature.name || Object.keys(signature).length <= 3)) {
+            document.getElementById('signaturePreview').innerHTML = signature.html;
+            
+            // HTML içeriğini parse et ve metin içeriklerini çıkarmaya çalış
+            extractDataFromHTML(signature.html);
+        } else {
+            // İmzayı oluştur
+            generateSignature();
+        }
+        
+        console.log('Form alanları başarıyla dolduruldu');
+    } catch (error) {
+        console.error('Form doldurma hatası:', error);
+        alert('İmza yüklenirken bir hata oluştu: ' + error.message);
+    }
+}
+
+// HTML içeriğinden metin içeriklerini çıkar
+function extractDataFromHTML(htmlContent) {
+    try {
+        // HTML'i parse edelim
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+        
+        // Ad soyad için renkli veya kalın metin ara
+        const nameElement = doc.querySelector('div[style*="color:"][style*="font-weight: bold"], div[style*="color:"][style*="font-weight:bold"], div[style*="font-weight: bold"]');
         if (nameElement && !document.getElementById('name').value) {
             document.getElementById('name').value = nameElement.textContent.trim();
         }
         
-        // Pozisyon ve şirket bilgilerini ara
-        for (const text of allTexts) {
-            // Eğer metin "X | Y" formatındaysa, muhtemelen pozisyon | şirket
+        // Tüm metin içeren öğeleri al
+        const allElements = doc.querySelectorAll('div, span, p, td');
+        const allTexts = Array.from(allElements)
+            .map(el => el.textContent.trim())
+            .filter(text => text && text.length > 0);
+        
+        if (allTexts.length === 0) return;
+        
+        console.log('İmzadaki tüm metinler:', allTexts);
+        
+        // Eğer ad doldurulmadıysa, ilk metni ad olarak kullan
+        if (!document.getElementById('name').value && allTexts[0]) {
+            document.getElementById('name').value = allTexts[0];
+        }
+        
+        // Pozisyon ve şirket için | içeren metinleri ara
+        for (const element of allElements) {
+            const text = element.textContent.trim();
             if (text.includes('|')) {
                 const parts = text.split('|').map(part => part.trim());
                 if (parts.length >= 2) {
-                    // İlk bölüm pozisyon, ikinci bölüm şirket olabilir
+                    // İlk bölüm pozisyon, ikinci bölüm şirket
                     if (!document.getElementById('title').value) {
                         document.getElementById('title').value = parts[0];
                     }
                     if (!document.getElementById('company').value) {
                         document.getElementById('company').value = parts[1];
                     }
+                    break;
                 }
             }
         }
         
-        // E-posta, telefon ve website bilgilerini ara
+        // E-posta adresi ara
         for (const element of allElements) {
             const text = element.textContent.trim();
-            
-            // E-posta kontrolü
             if (text.includes('@') && text.includes('.') && !document.getElementById('email').value) {
                 const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
                 if (emailMatch) {
                     document.getElementById('email').value = emailMatch[0];
-                }
-            }
-            
-            // Telefon numarası kontrolü
-            if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text) && !document.getElementById('phone').value) {
-                const phoneMatch = text.match(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
-                if (phoneMatch) {
-                    document.getElementById('phone').value = phoneMatch[0];
-                }
-            }
-            
-            // Website kontrolü
-            if ((text.includes('www.') || text.includes('http')) && !document.getElementById('website').value) {
-                const websiteMatch = text.match(/(https?:\/\/|www\.)[^\s,]+/);
-                if (websiteMatch) {
-                    document.getElementById('website').value = websiteMatch[0];
+                    break;
                 }
             }
         }
         
-        // Adres için daha spesifik arama yapalım
+        // Telefon numarası ara
+        for (const element of allElements) {
+            const text = element.textContent.trim();
+            if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text) && !document.getElementById('phone').value) {
+                const phoneMatch = text.match(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
+                if (phoneMatch) {
+                    document.getElementById('phone').value = phoneMatch[0];
+                    break;
+                }
+            }
+        }
+        
+        // Website ara
+        for (const element of allElements) {
+            const text = element.textContent.trim();
+            if ((text.includes('www.') || text.includes('http')) && !document.getElementById('website').value) {
+                const websiteMatch = text.match(/(https?:\/\/|www\.)[^\s,]+/);
+                if (websiteMatch) {
+                    document.getElementById('website').value = websiteMatch[0];
+                    break;
+                }
+            }
+        }
+        
+        // Adres ara
         const addressElements = Array.from(allElements).filter(el => {
             const content = el.textContent.trim();
             return content.length > 15 && 
@@ -1751,12 +1813,10 @@ function loadSignatureToForm(signature) {
         
         if (addressElements.length > 0 && !document.getElementById('address').value) {
             document.getElementById('address').value = addressElements[0].textContent.trim();
-            
-            // Adres alanını temizle
             cleanAddressField();
         }
         
-        // Sosyal medya bağlantılarını kontrol et
+        // Sosyal medya linkleri
         const socialLinks = doc.querySelectorAll('a[href]');
         for (const link of socialLinks) {
             const href = link.getAttribute('href');
@@ -1779,103 +1839,10 @@ function loadSignatureToForm(signature) {
         // Sosyal medya görünürlüğünü güncelle
         updateSocialLinksVisibility();
         
-        // Font ailesini al
-        const fontStyles = doc.querySelector('div[style*="font-family"]');
-        if (fontStyles) {
-            const styleAttr = fontStyles.getAttribute('style');
-            const fontFamilyMatch = styleAttr.match(/font-family:\s*['"]?([^'";]+)/);
-            
-            if (fontFamilyMatch && fontFamilyMatch[1]) {
-                const fontFamily = fontFamilyMatch[1].replace(/['",]/g, '').trim().split(/,\s*/)[0];
-                const fontSelect = document.getElementById('font');
-                
-                // Font seçimi
-                for (let i = 0; i < fontSelect.options.length; i++) {
-                    if (fontSelect.options[i].value.toLowerCase() === fontFamily.toLowerCase()) {
-                        fontSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-            
-            // Font boyutunu al
-            const fontSizeMatch = styleAttr.match(/font-size:\s*([^;]+)/);
-            if (fontSizeMatch && fontSizeMatch[1]) {
-                const fontSize = fontSizeMatch[1].trim();
-                const fontSizeSelect = document.getElementById('fontSize');
-                
-                // Font boyutu seçimi
-                for (let i = 0; i < fontSizeSelect.options.length; i++) {
-                    if (fontSizeSelect.options[i].value === fontSize) {
-                        fontSizeSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Renkleri al - önce birincil renk
-        const colorElement = doc.querySelector('div[style*="color:"]');
-        if (colorElement) {
-            const styleAttr = colorElement.getAttribute('style');
-            const colorMatch = styleAttr.match(/color:\s*([^;]+)/);
-            
-            if (colorMatch && colorMatch[1]) {
-                const color = colorMatch[1].trim();
-                document.getElementById('primaryColor').value = color;
-                document.getElementById('primaryColorHex').value = color;
-            }
-        }
-        
-        // İkincil renk - kenar çizgisi
-        const borderStyle = doc.querySelector('[style*="border-right:"], [style*="border-left:"]');
-        if (borderStyle) {
-            const styleAttr = borderStyle.getAttribute('style');
-            const borderColorMatch = styleAttr.match(/border-(right|left):\s*\d+px\s*solid\s*([^;]+)/);
-            
-            if (borderColorMatch && borderColorMatch[2]) {
-                const secondaryColor = borderColorMatch[2].trim();
-                document.getElementById('secondaryColor').value = secondaryColor;
-                document.getElementById('secondaryColorHex').value = secondaryColor;
-            }
-        }
-        
-        // İmzada logo varsa
-        const logoImg = doc.querySelector('img');
-        if (logoImg) {
-            const logoSrc = logoImg.getAttribute('src');
-            document.getElementById('logoUrl').value = logoSrc;
-            
-            // Logo boyutunu ayarla
-            if (logoImg.hasAttribute('width')) {
-                const logoWidth = parseInt(logoImg.getAttribute('width'));
-                if (!isNaN(logoWidth)) {
-                    logoSize = logoWidth;
-                    document.getElementById('logoSize').value = logoSize;
-                    document.getElementById('logoSizeValue').textContent = logoSize + 'px';
-                }
-            }
-            
-            // Logo kontrol panelini göster
-            const logoControls = document.querySelector('.logo-size-controls');
-            logoControls.style.display = 'block';
-        }
-        
-        // Yasal uyarı metni kontrolü
-        const smallTexts = doc.querySelectorAll('div[style*="font-size: 10px"], div[style*="font-size:10px"]');
-        if (smallTexts.length > 0) {
-            document.getElementById('disclaimer').value = smallTexts[0].textContent.trim();
-        }
-        
         // İmzayı tekrar oluştur
-        setTimeout(() => {
-            generateSignature();
-            console.log('Form alanları başarıyla dolduruldu ve imza oluşturuldu');
-        }, 100);
-        
+        generateSignature();
     } catch (error) {
-        console.error('Form doldurma hatası:', error);
-        alert('İmza yüklenirken bir hata oluştu: ' + error.message);
+        console.error('HTML içeriğinden veri çıkarma hatası:', error);
     }
 }
 
