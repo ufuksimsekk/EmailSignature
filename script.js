@@ -589,48 +589,76 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // İmza oluşturma işlevi
 function generateSignature() {
-    const data = collectFormData();
-    const signaturePreview = document.getElementById('signaturePreview');
-    const signatureCode = document.getElementById('signatureCode');
-    
-    // Logo boyut kontrollerinin görünürlüğünü ayarla
-    const logoControls = document.querySelector('.logo-size-controls');
-    logoControls.style.display = data.logoUrl ? 'block' : 'none';
-    
-    let signatureHTML = '';
-    
-    // Font ailesini tırnak içine al ve sistem fontlarını kontrol et
-    const systemFonts = ['Arial', 'Georgia', 'Courier New'];
-    const fontFamily = systemFonts.includes(data.font) 
-        ? data.font 
-        : `'${data.font}', sans-serif`;
-    
-    // Önizleme div'ine font ailesini doğrudan uygula
-    signaturePreview.style.fontFamily = fontFamily;
-    signaturePreview.style.fontSize = data.fontSize;
-    
-    switch (data.template) {
-        case 'simple':
-            signatureHTML = generateSimpleTemplate(data, fontFamily);
-            break;
-        case 'professional':
-            signatureHTML = generateProfessionalTemplate(data, fontFamily);
-            break;
-        case 'modern':
-            signatureHTML = generateModernTemplate(data, fontFamily);
-            break;
-        case 'minimal':
-            signatureHTML = generateMinimalTemplate(data, fontFamily);
-            break;
-        default:
-            signatureHTML = generateSimpleTemplate(data, fontFamily);
-    }
-    
-    signaturePreview.innerHTML = signatureHTML;
-    
-    // Eğer signatureCode elementi varsa güncelle
-    if (signatureCode) {
-        signatureCode.textContent = signatureHTML;
+    try {
+        const data = collectFormData();
+        console.log('İmza oluşturuluyor, toplanan veriler:', data);
+        
+        const signaturePreview = document.getElementById('signaturePreview');
+        const signatureCode = document.getElementById('signatureCode');
+        
+        // Logo boyut kontrollerinin görünürlüğünü ayarla
+        const logoControls = document.querySelector('.logo-size-controls');
+        if (logoControls) {
+            logoControls.style.display = data.logoUrl ? 'block' : 'none';
+        }
+        
+        let signatureHTML = '';
+        
+        // Font ailesini tırnak içine al ve sistem fontlarını kontrol et
+        const systemFonts = ['Arial', 'Georgia', 'Courier New'];
+        const fontFamily = data.font && systemFonts.includes(data.font) 
+            ? data.font 
+            : `'${data.font || 'Arial'}', sans-serif`;
+        
+        // Önizleme div'ine font ailesini doğrudan uygula
+        if (signaturePreview) {
+            signaturePreview.style.fontFamily = fontFamily;
+            signaturePreview.style.fontSize = data.fontSize || '14px';
+        }
+        
+        // Verileri doğrula ve eksik alanlar için varsayılan değerler kullan
+        const verifiedData = {
+            ...data,
+            name: data.name || 'Ad Soyad',
+            template: data.template || 'simple',
+            fontSize: data.fontSize || '14px',
+            primaryColor: data.primaryColor || '#3498db',
+            secondaryColor: data.secondaryColor || '#2c3e50',
+            linkedin: data.linkedin || { enabled: false, url: '' },
+            twitter: data.twitter || { enabled: false, url: '' },
+            facebook: data.facebook || { enabled: false, url: '' },
+            instagram: data.instagram || { enabled: false, url: '' }
+        };
+        
+        switch (verifiedData.template) {
+            case 'professional':
+                signatureHTML = generateProfessionalTemplate(verifiedData, fontFamily);
+                break;
+            case 'modern':
+                signatureHTML = generateModernTemplate(verifiedData, fontFamily);
+                break;
+            case 'minimal':
+                signatureHTML = generateMinimalTemplate(verifiedData, fontFamily);
+                break;
+            case 'simple':
+            default:
+                signatureHTML = generateSimpleTemplate(verifiedData, fontFamily);
+        }
+        
+        if (signaturePreview) {
+            signaturePreview.innerHTML = signatureHTML;
+        }
+        
+        // Eğer signatureCode elementi varsa güncelle
+        if (signatureCode) {
+            signatureCode.textContent = signatureHTML;
+        }
+        
+        return signatureHTML;
+    } catch (error) {
+        console.error('İmza oluşturma hatası:', error);
+        alert('İmza oluşturulurken bir hata oluştu: ' + error.message);
+        return '';
     }
 }
 
@@ -1581,38 +1609,15 @@ async function loadSignatureFromCloud(id) {
         try {
             // API'den gelen yanıtı parse et
             const responseData = JSON.parse(responseText);
-            console.log('İmza verisi alındı:', responseData);
+            console.log('İmza verisi alındı (ham):', responseData);
             
-            // API'den gelen data'yı doğru formata çevir
-            let signature;
-            
-            // Gelen veri doğrudan bir imza objesi ise
-            if (responseData && responseData.id && responseData.html) {
-                signature = responseData;
-            } 
-            // Eğer bir settings objesi içeriyorsa
-            else if (responseData && responseData.settings) {
-                signature = {
-                    ...responseData.settings,
-                    name: responseData.name,
-                    html: responseData.html,
-                    id: responseData.id
-                };
-            } 
-            // Hiçbir bilinen formatta değilse
-            else {
-                console.error('Beklenmeyen imza formatı:', responseData);
-                throw new Error('Beklenmeyen imza formatı, form doldurulamadı');
-            }
-            
-            console.log('İmza işlendi ve form dolduruluyor:', signature);
+            // API'den gelen data'yı normalize et
+            let signature = normalizeSignatureData(responseData);
+            console.log('İmza verisi normalize edildi:', signature);
             
             // Form alanlarını güncelle
             switchTab('editor'); // Önce editör sekmesine geç
             loadSignatureToForm(signature);
-            
-            // İmzayı tekrar oluştur
-            generateSignature();
             
             // Kullanıcıya bilgi ver
             alert(`"${signature.name || 'İsimsiz imza'}" başarıyla yüklendi ve düzenleyicide açıldı.`);
@@ -1626,6 +1631,62 @@ async function loadSignatureFromCloud(id) {
     }
 }
 
+// İmza verisini normalize eden yardımcı fonksiyon
+function normalizeSignatureData(data) {
+    console.log('Normalize ediliyor:', data);
+    
+    // Eğer zaten uygun formattaysa direkt dön
+    if (data && typeof data === 'object' && 
+        (data.template || data.font || data.fontSize)) {
+        return data;
+    }
+    
+    let normalizedData = { ...data };
+    
+    // Eğer settings objesi içeriyorsa
+    if (data.settings && typeof data.settings === 'object') {
+        normalizedData = {
+            ...normalizedData,
+            ...data.settings,
+        };
+    }
+    
+    // Eğer data objesi içeriyorsa
+    if (data.data && typeof data.data === 'object') {
+        normalizedData = {
+            ...normalizedData,
+            ...data.data,
+        };
+    }
+    
+    // Diğer zorunlu alanları ekle
+    if (!normalizedData.name && data.name) {
+        normalizedData.name = data.name;
+    }
+    
+    if (!normalizedData.html && data.html) {
+        normalizedData.html = data.html;
+    }
+    
+    if (!normalizedData.id && data.id) {
+        normalizedData.id = data.id;
+    }
+    
+    // Sosyal medya alanlarını düzenle
+    ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
+        // Eğer sosyal medya nesnesi yoksa veya URL formatı yanlışsa düzelt
+        if (data[social] && typeof data[social] === 'string') {
+            normalizedData[social] = {
+                enabled: true,
+                url: data[social]
+            };
+        }
+    });
+    
+    console.log('Normalize edilmiş veri:', normalizedData);
+    return normalizedData;
+}
+
 // Form verilerini doldur
 function loadSignatureToForm(signature) {
     console.log('loadSignatureToForm çağrıldı, gelen veri:', signature);
@@ -1633,6 +1694,9 @@ function loadSignatureToForm(signature) {
     try {
         // Öğeleri sıfırlayalım, böylece önceki veriler karışmaz
         resetForm();
+        
+        // İmza nesnesinin içeriğini loglayalım
+        console.log('İmza nesnesindeki anahtarlar:', Object.keys(signature));
         
         // Temel alanları doldur
         document.getElementById('name').value = signature.name || '';
@@ -1642,19 +1706,18 @@ function loadSignatureToForm(signature) {
         document.getElementById('phone').value = signature.phone || '';
         document.getElementById('website').value = signature.website || '';
         document.getElementById('address').value = signature.address || '';
+        
+        // Temel stil ayarları
+        let templateValue = signature.template || 'simple';
+        document.getElementById('template').value = templateValue;
         document.getElementById('font').value = signature.font || 'Arial';
         document.getElementById('fontSize').value = signature.fontSize || '14px';
         document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
         document.getElementById('primaryColorHex').value = signature.primaryColor || '#3498db';
         document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
         document.getElementById('secondaryColorHex').value = signature.secondaryColor || '#2c3e50';
-        document.getElementById('logoUrl').value = signature.logoUrl || '';
-        document.getElementById('avatarUrl').value = signature.avatarUrl || '';
-        document.getElementById('disclaimer').value = signature.disclaimer || '';
         
-        // Şablon seçimini güncelle
-        const templateValue = signature.template || 'simple';
-        document.getElementById('template').value = templateValue;
+        // Şablon seçimini görsel olarak güncelle
         document.querySelectorAll('.template').forEach(template => {
             template.classList.remove('selected');
             if (template.getAttribute('data-template') === templateValue) {
@@ -1662,36 +1725,67 @@ function loadSignatureToForm(signature) {
             }
         });
         
+        // Logo ve avatar ayarları
+        document.getElementById('logoUrl').value = signature.logoUrl || '';
+        document.getElementById('avatarUrl').value = signature.avatarUrl || '';
+        document.getElementById('disclaimer').value = signature.disclaimer || '';
+        
         // Logo boyutu ayarları
         if (typeof signature.logoSize !== 'undefined') {
             logoSize = signature.logoSize;
-            document.getElementById('logoSize').value = logoSize;
-            document.getElementById('logoSizeValue').textContent = logoSize + 'px';
         } else {
             logoSize = 80; // Varsayılan değer
-            document.getElementById('logoSize').value = logoSize;
-            document.getElementById('logoSizeValue').textContent = logoSize + 'px';
         }
+        
+        document.getElementById('logoSize').value = logoSize;
+        document.getElementById('logoSizeValue').textContent = logoSize + 'px';
         
         // Oran koruma ayarları
         if (typeof signature.maintainRatio !== 'undefined') {
             maintainRatio = signature.maintainRatio;
-            document.getElementById('logoMaintainRatio').checked = maintainRatio;
         } else {
             maintainRatio = true; // Varsayılan değer
-            document.getElementById('logoMaintainRatio').checked = true;
         }
         
-        // Sosyal medya ayarlarını güncelle
-        document.getElementById('linkedin').checked = signature.linkedin?.enabled || false;
-        document.getElementById('twitter').checked = signature.twitter?.enabled || false;
-        document.getElementById('facebook').checked = signature.facebook?.enabled || false;
-        document.getElementById('instagram').checked = signature.instagram?.enabled || false;
+        document.getElementById('logoMaintainRatio').checked = maintainRatio;
         
-        document.getElementById('linkedinUrl').value = signature.linkedin?.url || '';
-        document.getElementById('twitterUrl').value = signature.twitter?.url || '';
-        document.getElementById('facebookUrl').value = signature.facebook?.url || '';
-        document.getElementById('instagramUrl').value = signature.instagram?.url || '';
+        // Sosyal medya ayarları
+        
+        // LinkedIn
+        if (signature.linkedin) {
+            document.getElementById('linkedin').checked = signature.linkedin.enabled || false;
+            document.getElementById('linkedinUrl').value = signature.linkedin.url || '';
+        } else {
+            document.getElementById('linkedin').checked = false;
+            document.getElementById('linkedinUrl').value = '';
+        }
+        
+        // Twitter
+        if (signature.twitter) {
+            document.getElementById('twitter').checked = signature.twitter.enabled || false;
+            document.getElementById('twitterUrl').value = signature.twitter.url || '';
+        } else {
+            document.getElementById('twitter').checked = false;
+            document.getElementById('twitterUrl').value = '';
+        }
+        
+        // Facebook
+        if (signature.facebook) {
+            document.getElementById('facebook').checked = signature.facebook.enabled || false;
+            document.getElementById('facebookUrl').value = signature.facebook.url || '';
+        } else {
+            document.getElementById('facebook').checked = false;
+            document.getElementById('facebookUrl').value = '';
+        }
+        
+        // Instagram
+        if (signature.instagram) {
+            document.getElementById('instagram').checked = signature.instagram.enabled || false;
+            document.getElementById('instagramUrl').value = signature.instagram.url || '';
+        } else {
+            document.getElementById('instagram').checked = false;
+            document.getElementById('instagramUrl').value = '';
+        }
         
         // Sosyal medya input alanlarını göster/gizle
         updateSocialLinksVisibility();
@@ -1700,18 +1794,19 @@ function loadSignatureToForm(signature) {
         const logoControls = document.querySelector('.logo-size-controls');
         logoControls.style.display = signature.logoUrl ? 'block' : 'none';
         
-        // Eğer sadece HTML içerik varsa, onu önizlemeye ekleyelim
-        if (signature.html && (!signature.name || Object.keys(signature).length <= 3)) {
-            document.getElementById('signaturePreview').innerHTML = signature.html;
-            
-            // HTML içeriğini parse et ve metin içeriklerini çıkarmaya çalış
+        // Eğer sadece HTML içerik varsa ve diğer alanlar eksikse,
+        // HTML içeriğini parse ederek bilgileri çıkarmaya çalış
+        if (signature.html && 
+            (!signature.title || !signature.company || !signature.email)) {
             extractDataFromHTML(signature.html);
-        } else {
-            // İmzayı oluştur
-            generateSignature();
         }
         
-        console.log('Form alanları başarıyla dolduruldu');
+        // İmzayı oluştur
+        setTimeout(() => {
+            generateSignature();
+            console.log('İmza yükleme tamamlandı ve önizleme güncellendi');
+        }, 100);
+        
     } catch (error) {
         console.error('Form doldurma hatası:', error);
         alert('İmza yüklenirken bir hata oluştu: ' + error.message);
