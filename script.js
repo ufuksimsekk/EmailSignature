@@ -211,20 +211,31 @@ document.addEventListener('DOMContentLoaded', async function() {
             saveSignatureToCloud(signatureData)
                 .then(() => {
                     alert(`"${signatureName}" imzası başarıyla buluta kaydedildi!`);
+                    // Kaydedilen imzalar listesini güncelle
+                    updateSavedSignaturesList();
+                    // Ayarlar sekmesine geç - imzaları göstermek için
+                    switchTab('settings');
                 })
                 .catch(error => {
                     console.error('Buluta kaydetme hatası:', error);
                     alert('Buluta kaydetme başarısız oldu, yerel olarak kaydediliyor...');
                     saveSignatureLocally(signatureData);
+                    // Kaydedilen imzalar listesini güncelle
+                    updateSavedSignaturesList();
+                    // Ayarlar sekmesine geç - imzaları göstermek için
+                    switchTab('settings');
                 });
         } else {
             // Yerel storage'a kaydet
             saveSignatureLocally(signatureData);
             alert(`"${signatureName}" imzası yerel olarak kaydedildi! Bulutta saklamak için giriş yapın.`);
+            
+            // Kaydedilen imzalar listesini güncelle
+            updateSavedSignaturesList();
+            
+            // Ayarlar sekmesine geç - imzaları göstermek için
+            switchTab('settings');
         }
-        
-        // Kaydedilen imzalar listesini güncelle
-        updateSavedSignaturesList();
     });
     
     // Tüm imzaları dışa aktar butonu
