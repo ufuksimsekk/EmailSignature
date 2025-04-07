@@ -1,0 +1,14 @@
+name = "email-signature-api"
+account_id = "30cf3dc1d7a1e46d56ea9884f9f47664"
+workers_dev = true
+compatibility_date = "2025-04-07"
+main = "workers/index.js"
+
+kv_namespaces = [
+    { binding = "USERS", id = "9de39def74474a1e8358b774a46f27d5" },
+    { binding = "SIGNATURES", id = "f1017b7b13c04a178234432e35d077e5" }
+]
+
+[vars]
+JWT_SECRET = "iyYCEL0SOlmPr5b06a1tQutvJ6vGWToiONelu3o5EfY="
+SENDGRID_API_KEY = "YOUR_SENDGRID_API_KEY" 
