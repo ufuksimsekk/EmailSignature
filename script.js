@@ -1634,12 +1634,12 @@ function loadSignatureToForm(signature) {
         // Öğeleri sıfırlayalım, böylece önceki veriler karışmaz
         resetForm();
         
-        // İmza adını doldur
+        // İmza adını ve diğer temel bilgileri direkt olarak alıyoruz
         if (signature.name) {
             document.getElementById('name').value = signature.name;
         }
         
-        // HTML içeriğini parse et (base64 logoyu da içerebilir)
+        // HTML içeriğini parse et
         const htmlContent = signature.html;
         
         // İmza HTML'ini doğrudan önizlemeye ekleyelim
@@ -1676,123 +1676,84 @@ function loadSignatureToForm(signature) {
         
         console.log('Tespit edilen şablon:', detectedTemplate);
         
-        // Tüm metin içeriğini çıkaralım
-        const allTextContent = doc.querySelectorAll('div, span, p, td');
-        const allTexts = Array.from(allTextContent).map(el => el.textContent.trim()).filter(t => t);
+        // HTML içindeki tüm bölümleri analiz et
+        const allElements = doc.querySelectorAll('div, span, p, td');
+        
+        // İmza içeriğindeki tüm metin öğelerini topla
+        const allTexts = Array.from(allElements)
+            .map(el => el.textContent.trim())
+            .filter(text => text.length > 0);
         
         console.log('İmzadaki tüm metinler:', allTexts);
         
-        // İmzadan tüm bilgileri çıkarmak için metin analizi
-        if (allTexts.length > 0) {
-            // Ad soyad genellikle ilk metindir veya en belirgin metin
-            if (!signature.name && allTexts[0]) {
-                document.getElementById('name').value = allTexts[0];
-            }
-            
-            // Diğer metinleri analiz et
-            for (let i = 1; i < allTexts.length; i++) {
-                const text = allTexts[i];
-                
-                // E-posta adresi kontrolü
-                if (text.includes('@') && text.includes('.')) {
-                    document.getElementById('email').value = text.split('|')[0].trim();
-                }
-                
-                // Telefon numarası kontrolü
-                else if (/(\+\d{1,3}|\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text)) {
-                    const phoneMatch = text.match(/(\+\d{1,3}|\(\d{1,4}\)|\d{1,4})[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
-                    if (phoneMatch) {
-                        document.getElementById('phone').value = phoneMatch[0].trim();
-                    }
-                }
-                
-                // Pozisyon/Şirket bilgisi
-                else if (text.includes('|')) {
-                    const parts = text.split('|').map(part => part.trim());
-                    
-                    // Tipik olarak "Pozisyon | Şirket" formatında
-                    if (parts.length >= 2) {
+        // Ad soyad, renkli veya kalın yazılı olabilir
+        const nameElement = doc.querySelector('div[style*="color:"][style*="font-weight: bold"], div[style*="color:"][style*="font-weight:bold"]');
+        if (nameElement && !document.getElementById('name').value) {
+            document.getElementById('name').value = nameElement.textContent.trim();
+        }
+        
+        // Pozisyon ve şirket bilgilerini ara
+        for (const text of allTexts) {
+            // Eğer metin "X | Y" formatındaysa, muhtemelen pozisyon | şirket
+            if (text.includes('|')) {
+                const parts = text.split('|').map(part => part.trim());
+                if (parts.length >= 2) {
+                    // İlk bölüm pozisyon, ikinci bölüm şirket olabilir
+                    if (!document.getElementById('title').value) {
                         document.getElementById('title').value = parts[0];
+                    }
+                    if (!document.getElementById('company').value) {
                         document.getElementById('company').value = parts[1];
                     }
                 }
-                
-                // Website kontrolü
-                else if (text.includes('www.') || text.includes('http')) {
-                    document.getElementById('website').value = text.trim();
+            }
+        }
+        
+        // E-posta, telefon ve website bilgilerini ara
+        for (const element of allElements) {
+            const text = element.textContent.trim();
+            
+            // E-posta kontrolü
+            if (text.includes('@') && text.includes('.') && !document.getElementById('email').value) {
+                const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+                if (emailMatch) {
+                    document.getElementById('email').value = emailMatch[0];
                 }
-                
-                // Uzun metin muhtemelen adres
-                else if (text.length > 20 && text.includes(',')) {
-                    document.getElementById('address').value = text;
+            }
+            
+            // Telefon numarası kontrolü
+            if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text) && !document.getElementById('phone').value) {
+                const phoneMatch = text.match(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
+                if (phoneMatch) {
+                    document.getElementById('phone').value = phoneMatch[0];
                 }
-                // Alternatif adres tespiti - birden fazla satır veya boşluk içeren metinler
-                else if ((text.length > 20 && (text.includes('\n') || text.split(' ').length > 4)) && !document.getElementById('address').value) {
-                    document.getElementById('address').value = text;
-                }
-                
-                // Tek kelime ve ilk metin değilse muhtemelen pozisyon
-                else if (text.split(' ').length <= 3 && !document.getElementById('title').value) {
-                    document.getElementById('title').value = text;
-                }
-                
-                // Çok kelimeli ve adres değilse muhtemelen şirket
-                else if (text.split(' ').length > 1 && !document.getElementById('company').value) {
-                    document.getElementById('company').value = text;
+            }
+            
+            // Website kontrolü
+            if ((text.includes('www.') || text.includes('http')) && !document.getElementById('website').value) {
+                const websiteMatch = text.match(/(https?:\/\/|www\.)[^\s,]+/);
+                if (websiteMatch) {
+                    document.getElementById('website').value = websiteMatch[0];
                 }
             }
         }
         
-        // HTML içinde doğrudan adres bulma girişimi (genel metinlerden bulunamadıysa)
-        if (!document.getElementById('address').value) {
-            // Adres için daha spesifik arama - adres özellikleri taşıyan metinler
-            const possibleAddressElements = Array.from(doc.querySelectorAll('div, td')).filter(el => {
-                const content = el.textContent.trim();
-                // Adres genellikle virgül, cadde adı, numara, şehir içerir ve diğer iletişim bilgilerinden uzundur
-                return content.length > 15 && 
-                       (content.includes(',') || 
-                        /\d+\s+[A-Za-zÇçĞğİıÖöŞşÜü]+(\s+[A-Za-zÇçĞğİıÖöŞşÜü]+)+/.test(content)) && // Sayı ve ardından kelimeler (cadde gibi)
-                       !content.includes('@') && // E-posta içermemeli
-                       !content.includes('www.') && // Website içermemeli
-                       !/^\+?\d+[\d\s]+$/.test(content); // Sadece telefon numarası olmamalı
-            });
-            
-            if (possibleAddressElements.length > 0) {
-                document.getElementById('address').value = possibleAddressElements[0].textContent.trim();
-            }
-        }
+        // Adres için daha spesifik arama yapalım
+        const addressElements = Array.from(allElements).filter(el => {
+            const content = el.textContent.trim();
+            return content.length > 15 && 
+                   (content.includes(',') || 
+                    /\d+\s+[A-Za-zÇçĞğİıÖöŞşÜü]+(\s+[A-Za-zÇçĞğİıÖöŞşÜü]+)+/.test(content)) &&
+                   !content.includes('@') && 
+                   !content.includes('www.') && 
+                   !/^\+?\d+[\d\s]+$/.test(content);
+        });
         
-        // Adres alanının içeriğini doğrula ve temizle
-        const addressField = document.getElementById('address');
-        if (addressField.value) {
-            // E-posta ve telefon içeren adresleri temizle
-            const addressValue = addressField.value;
+        if (addressElements.length > 0 && !document.getElementById('address').value) {
+            document.getElementById('address').value = addressElements[0].textContent.trim();
             
-            // E-postaları kaldır
-            if (addressValue.includes('@')) {
-                addressField.value = addressValue.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim();
-            }
-            
-            // Telefon numaralarını kaldır
-            if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(addressField.value)) {
-                addressField.value = addressField.value.replace(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/g, '').trim();
-            }
-            
-            // Web sitelerini kaldır
-            if (addressField.value.includes('www.') || addressField.value.includes('http')) {
-                addressField.value = addressField.value.replace(/(https?:\/\/|www\.)[^\s,]+/g, '').trim();
-            }
-            
-            // Çift boşlukları tek boşluğa çevirme
-            addressField.value = addressField.value.replace(/\s+/g, ' ').trim();
-            
-            // Gereksiz noktalama işaretlerini temizle
-            addressField.value = addressField.value.replace(/^[,\s]+|[,\s]+$/g, '').trim();
-            
-            // Eğer adres alanında sadece 1-2 kelime kaldıysa, muhtemelen adres değildir
-            if (addressField.value.split(/\s+/).length <= 2) {
-                addressField.value = '';
-            }
+            // Adres alanını temizle
+            cleanAddressField();
         }
         
         // Sosyal medya bağlantılarını kontrol et
@@ -1915,6 +1876,38 @@ function loadSignatureToForm(signature) {
     } catch (error) {
         console.error('Form doldurma hatası:', error);
         alert('İmza yüklenirken bir hata oluştu: ' + error.message);
+    }
+}
+
+// Adres alanını temizle
+function cleanAddressField() {
+    const addressField = document.getElementById('address');
+    if (addressField.value) {
+        // E-postaları kaldır
+        if (addressField.value.includes('@')) {
+            addressField.value = addressField.value.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim();
+        }
+        
+        // Telefon numaralarını kaldır
+        if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(addressField.value)) {
+            addressField.value = addressField.value.replace(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/g, '').trim();
+        }
+        
+        // Web sitelerini kaldır
+        if (addressField.value.includes('www.') || addressField.value.includes('http')) {
+            addressField.value = addressField.value.replace(/(https?:\/\/|www\.)[^\s,]+/g, '').trim();
+        }
+        
+        // Çift boşlukları tek boşluğa çevirme
+        addressField.value = addressField.value.replace(/\s+/g, ' ').trim();
+        
+        // Gereksiz noktalama işaretlerini temizle
+        addressField.value = addressField.value.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+        
+        // Eğer adres alanında sadece 1-2 kelime kaldıysa, muhtemelen adres değildir
+        if (addressField.value.split(/\s+/).length <= 2) {
+            addressField.value = '';
+        }
     }
 }
 
