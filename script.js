@@ -1587,127 +1587,159 @@ function loadSignatureToForm(signature) {
     console.log('loadSignatureToForm çağrıldı, gelen veri:', signature);
     
     try {
-        // HTML içeriğini parse et
+        // Öğeleri sıfırlayalım, böylece önceki veriler karışmaz
+        resetForm();
+        
+        // İmza adını doldur
+        if (signature.name) {
+            document.getElementById('name').value = signature.name;
+        }
+        
+        // HTML içeriğini parse et (base64 logoyu da içerebilir)
+        const htmlContent = signature.html;
+        
+        // İmza HTML'ini doğrudan önizlemeye ekleyelim
+        document.getElementById('signaturePreview').innerHTML = htmlContent;
+        
+        // HTML'i parse edelim
         const parser = new DOMParser();
-        const doc = parser.parseFromString(signature.html, 'text/html');
+        const doc = parser.parseFromString(htmlContent, 'text/html');
         
-        // Önce preview'a HTML'i ekleyelim
-        document.getElementById('signaturePreview').innerHTML = signature.html;
-        
-        // Ad Soyad - renk içeren veya font-weight: bold içeren div'i ara
-        const nameElement = doc.querySelector('div[style*="color: #3498db"], div[style*="font-weight: bold"]');
-        if (nameElement) {
-            document.getElementById('name').value = nameElement.textContent.trim();
-        }
-        
-        // Tüm div'leri al
-        const allDivs = Array.from(doc.querySelectorAll('div'));
-        
-        // Ad soyad dışındaki ilk div pozisyon ve şirket olabilir
-        if (allDivs.length > 1) {
-            const titleCompanyText = allDivs[1].textContent.trim();
-            if (titleCompanyText.includes('|')) {
-                const [title, company] = titleCompanyText.split('|').map(s => s.trim());
-                document.getElementById('title').value = title || '';
-                document.getElementById('company').value = company || '';
-            } else {
-                document.getElementById('title').value = titleCompanyText;
-            }
-        }
-        
-        // İkinci div e-posta ve telefon olabilir
-        if (allDivs.length > 2) {
-            const contactText = allDivs[2].textContent.trim();
-            if (contactText.includes('|')) {
-                const [email, phone] = contactText.split('|').map(s => s.trim());
-                document.getElementById('email').value = email || '';
-                document.getElementById('phone').value = phone || '';
-            } else if (contactText.includes('@')) {
-                document.getElementById('email').value = contactText;
-            } else {
-                document.getElementById('phone').value = contactText;
-            }
-        }
-        
-        // Font ve boyut
-        const styleElement = doc.querySelector('div[style*="font-family"]');
-        if (styleElement) {
-            const style = styleElement.getAttribute('style');
-            const fontMatch = style.match(/font-family:\s*([^;]+)/);
-            const sizeMatch = style.match(/font-size:\s*([^;]+)/);
+        // Font ailesini al
+        const fontStyles = doc.querySelector('div[style*="font-family"]');
+        if (fontStyles) {
+            const styleAttr = fontStyles.getAttribute('style');
+            const fontFamilyMatch = styleAttr.match(/font-family:\s*['"]?([^'";]+)/);
             
-            if (fontMatch) {
-                const font = fontMatch[1].trim().replace(/['"]/g, '').split(',')[0];
+            if (fontFamilyMatch && fontFamilyMatch[1]) {
+                const fontFamily = fontFamilyMatch[1].replace(/['",]/g, '').trim().split(/,\s*/)[0];
                 const fontSelect = document.getElementById('font');
-                // Eğer font varsa seç, yoksa Arial'i seç
-                if (Array.from(fontSelect.options).some(option => option.value === font)) {
-                    fontSelect.value = font;
-                } else {
-                    fontSelect.value = 'Arial';
+                
+                // Font seçimi
+                for (let i = 0; i < fontSelect.options.length; i++) {
+                    if (fontSelect.options[i].value.toLowerCase() === fontFamily.toLowerCase()) {
+                        fontSelect.selectedIndex = i;
+                        break;
+                    }
                 }
             }
             
-            if (sizeMatch) {
-                const size = sizeMatch[1].trim();
+            // Font boyutunu al
+            const fontSizeMatch = styleAttr.match(/font-size:\s*([^;]+)/);
+            if (fontSizeMatch && fontSizeMatch[1]) {
+                const fontSize = fontSizeMatch[1].trim();
                 const fontSizeSelect = document.getElementById('fontSize');
-                // Eğer boyut varsa seç, yoksa 14px'i seç
-                if (Array.from(fontSizeSelect.options).some(option => option.value === size)) {
-                    fontSizeSelect.value = size;
-                } else {
-                    fontSizeSelect.value = '14px';
+                
+                // Font boyutu seçimi
+                for (let i = 0; i < fontSizeSelect.options.length; i++) {
+                    if (fontSizeSelect.options[i].value === fontSize) {
+                        fontSizeSelect.selectedIndex = i;
+                        break;
+                    }
                 }
             }
         }
         
-        // Renk
-        const colorElement = doc.querySelector('div[style*="color: #"]');
-        if (colorElement) {
-            const colorMatch = colorElement.getAttribute('style').match(/color:\s*([^;]+)/);
-            if (colorMatch) {
-                const color = colorMatch[1].trim();
-                document.getElementById('primaryColor').value = color;
-                document.getElementById('primaryColorHex').value = color;
+        // Renkleri al
+        const borderStyle = doc.querySelector('td[style*="border-right: 3px solid"]');
+        if (borderStyle) {
+            const styleAttr = borderStyle.getAttribute('style');
+            const borderColorMatch = styleAttr.match(/border-right:\s*\d+px\s*solid\s*([^;]+)/);
+            
+            if (borderColorMatch && borderColorMatch[1]) {
+                const secondaryColor = borderColorMatch[1].trim();
+                document.getElementById('secondaryColor').value = secondaryColor;
+                document.getElementById('secondaryColorHex').value = secondaryColor;
             }
         }
         
-        // Şablon seçimini görsel olarak güncelle - ilk olarak basit şablonu varsayılan olarak belirle
-        document.querySelectorAll('.template').forEach(template => {
-            template.classList.remove('selected');
-            if (template.getAttribute('data-template') === 'simple') {
-                template.classList.add('selected');
-                document.getElementById('template').value = 'simple';
+        // İmzada logo varsa
+        const logoImg = doc.querySelector('img');
+        if (logoImg) {
+            const logoSrc = logoImg.getAttribute('src');
+            document.getElementById('logoUrl').value = logoSrc;
+            
+            // Logo boyutunu ayarla
+            if (logoImg.hasAttribute('width')) {
+                const logoWidth = parseInt(logoImg.getAttribute('width'));
+                if (!isNaN(logoWidth)) {
+                    logoSize = logoWidth;
+                    document.getElementById('logoSize').value = logoSize;
+                    document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+                }
             }
-        });
+            
+            // Logo kontrol panelini göster
+            const logoControls = document.querySelector('.logo-size-controls');
+            logoControls.style.display = 'block';
+        }
         
-        // Sosyal medya ayarlarını sıfırla
-        ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
-            document.getElementById(social).checked = false;
-            document.getElementById(`${social}Url`).value = '';
-        });
+        // İmzanın türünü algıla ve şablonu seç
+        if (borderStyle) {
+            // Büyük olasılıkla modern şablon
+            document.getElementById('template').value = 'modern';
+            document.querySelectorAll('.template').forEach(template => {
+                template.classList.remove('selected');
+                if (template.getAttribute('data-template') === 'modern') {
+                    template.classList.add('selected');
+                }
+            });
+        } else if (doc.querySelector('td[style*="vertical-align: top; padding-right:"]')) {
+            // Büyük olasılıkla profesyonel şablon
+            document.getElementById('template').value = 'professional';
+            document.querySelectorAll('.template').forEach(template => {
+                template.classList.remove('selected');
+                if (template.getAttribute('data-template') === 'professional') {
+                    template.classList.add('selected');
+                }
+            });
+        } else {
+            // Diğer durumda basit şablon
+            document.getElementById('template').value = 'simple';
+            document.querySelectorAll('.template').forEach(template => {
+                template.classList.remove('selected');
+                if (template.getAttribute('data-template') === 'simple') {
+                    template.classList.add('selected');
+                }
+            });
+        }
         
-        // Logo ve avatar ayarlarını sıfırla
-        document.getElementById('logoUrl').value = '';
-        document.getElementById('avatarUrl').value = '';
-        document.getElementById('disclaimer').value = '';
-        
-        // Logo boyutu ayarlarını sıfırla
-        logoSize = 80;
-        document.getElementById('logoSize').value = logoSize;
-        document.getElementById('logoSizeValue').textContent = logoSize + 'px';
-        document.getElementById('logoMaintainRatio').checked = true;
-        
-        // Sosyal medya input alanlarını gizle
-        updateSocialLinksVisibility();
-        
-        // Logo kontrollerini gizle
-        const logoControls = document.querySelector('.logo-size-controls');
-        logoControls.style.display = 'none';
+        // İmzayı tekrar oluştur
+        generateSignature();
         
         console.log('Form alanları başarıyla dolduruldu');
     } catch (error) {
         console.error('Form doldurma hatası:', error);
         alert('İmza yüklenirken bir hata oluştu: ' + error.message);
     }
+}
+
+// Form alanlarını sıfırla
+function resetForm() {
+    // Temel bilgileri temizle
+    document.getElementById('title').value = '';
+    document.getElementById('company').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('website').value = '';
+    document.getElementById('address').value = '';
+    
+    // Sosyal medya ayarlarını sıfırla
+    ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
+        document.getElementById(social).checked = false;
+        document.getElementById(`${social}Url`).value = '';
+    });
+    
+    // Sosyal medya input alanlarını gizle
+    document.getElementById('socialLinksContainer').style.display = 'none';
+    
+    // Logo ve avatar ayarlarını sıfırla
+    document.getElementById('logoUrl').value = '';
+    document.getElementById('avatarUrl').value = '';
+    document.getElementById('disclaimer').value = '';
+    
+    // Logo kontrollerini gizle
+    document.querySelector('.logo-size-controls').style.display = 'none';
 }
 
 // İmza silme fonksiyonu
