@@ -737,6 +737,32 @@ function updateAuthModal() {
 // Kullanıcı kaydı
 async function registerUser(email, password, name) {
     try {
+        // E-posta formatı kontrolü
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Geçerli bir e-posta adresi girmelisiniz');
+        }
+        
+        // Şifre gereksinimleri kontrolü
+        if (password.length < 8) {
+            throw new Error('Şifre en az 8 karakter uzunluğunda olmalıdır');
+        }
+        
+        // Şifre karmaşıklık kontrolü
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        
+        if (!(hasUpperCase && hasLowerCase && hasNumbers) && !hasSpecialChar) {
+            throw new Error('Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermeli veya özel karakter içermelidir');
+        }
+        
+        // Ad boş olmamalı
+        if (!name || name.trim() === '') {
+            throw new Error('Ad alanı boş olamaz');
+        }
+        
         const response = await fetch(`${API_URL}/users`, {
             method: 'POST',
             headers: {
@@ -745,12 +771,13 @@ async function registerUser(email, password, name) {
             body: JSON.stringify({ email, password, name })
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Kayıt işlemi başarısız');
+            throw new Error(data.error || 'Kayıt işlemi sırasında bir hata oluştu');
         }
         
-        return await response.json();
+        return data;
     } catch (error) {
         console.error('Kayıt hatası:', error);
         throw error;
@@ -759,42 +786,49 @@ async function registerUser(email, password, name) {
 
 // Kullanıcı işlemleri için fonksiyonlar
 async function handleRegister() {
-    const email = authEmail.value;
-    const password = authPassword.value;
-    const name = authName.value;
-    
-    if (!email || !password || !name) {
-        alert('Lütfen tüm alanları doldurun!');
-        return;
-    }
-    
     try {
-        const response = await registerUser(email, password, name);
-        if (response.message === 'Doğrulama maili gönderildi') {
-            // Doğrulama formunu göster
-            authNameGroup.style.display = 'none';
-            verificationCodeGroup.style.display = 'block';
-            authSubmitBtn.textContent = 'Doğrula';
-            authSubmitBtn.onclick = async () => {
-                const code = document.getElementById('verificationCode').value;
-                if (!code) {
-                    alert('Lütfen doğrulama kodunu girin!');
-                    return;
-                }
-                try {
-                    const data = await verifyEmail(email, code);
-                    currentUser = data.user;
-                    localStorage.setItem('userToken', data.token);
-                    updateUI();
-                    hideAuthModal();
-                    alert('Hesabınız başarıyla doğrulandı!');
-                } catch (error) {
-                    alert('Doğrulama başarısız: ' + error.message);
-                }
-            };
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        const name = authName.value.trim();
+        
+        // Form doğrulama
+        if (!email || !password || !name) {
+            alert('Lütfen tüm alanları doldurun');
+            return;
         }
+        
+        // Kayıt işlemini başlat
+        authSubmitBtn.disabled = true;
+        authSubmitBtn.textContent = 'Kayıt olunuyor...';
+        
+        const result = await registerUser(email, password, name);
+        
+        // Doğrulama kodunu girmesi için form güncelle
+        modalTitle.textContent = 'E-posta Doğrulama';
+        authNameGroup.style.display = 'none';
+        authPassword.style.display = 'none';
+        document.querySelector('label[for="authPassword"]').style.display = 'none';
+        verificationCodeGroup.style.display = 'block';
+        switchAuthMode.style.display = 'none';
+        document.getElementById('forgotPassword').style.display = 'none';
+        
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = 'Doğrula';
+        authSubmitBtn.onclick = function(e) {
+            e.preventDefault();
+            const code = document.getElementById('verificationCode').value.trim();
+            if (!code) {
+                alert('Lütfen doğrulama kodunu girin');
+                return;
+            }
+            verifyEmail(email, code);
+        };
+        
+        alert(`Doğrulama kodu ${email} adresine gönderildi. Lütfen e-postanızı kontrol edin.`);
     } catch (error) {
-        alert('Kayıt işlemi başarısız: ' + error.message);
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = 'Kayıt Ol';
+        alert(`${error.message}`);
     }
 }
 
@@ -862,6 +896,9 @@ function updateUI() {
 // Doğrulama kodu kontrolü
 async function verifyEmail(email, code) {
     try {
+        authSubmitBtn.disabled = true;
+        authSubmitBtn.textContent = 'Doğrulanıyor...';
+        
         const response = await fetch(`${API_URL}/verify`, {
             method: 'POST',
             headers: {
@@ -870,14 +907,29 @@ async function verifyEmail(email, code) {
             body: JSON.stringify({ email, code })
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Doğrulama başarısız');
+            throw new Error(data.error || 'Doğrulama işlemi sırasında bir hata oluştu');
         }
         
-        return await response.json();
+        // Kullanıcı bilgilerini ve token'ı kaydet
+        currentUser = data.user;
+        localStorage.setItem('userToken', data.token);
+        
+        // UI'ı güncelle
+        updateUI();
+        hideAuthModal();
+        
+        alert('Hesabınız başarıyla doğrulandı!');
+        return data;
     } catch (error) {
         console.error('Doğrulama hatası:', error);
+        alert('Doğrulama başarısız: ' + error.message);
+        
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = 'Doğrula';
+        
         throw error;
     }
 }
