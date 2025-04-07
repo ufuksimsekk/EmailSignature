@@ -414,9 +414,9 @@ function generateSimpleTemplate(data, fontFamily) {
     // Logo varsa ekle
     if (data.logoUrl) {
         const logoStyle = data.maintainRatio 
-            ? `max-width: ${data.logoSize}px; height: auto;` 
+            ? `max-width: ${data.logoSize}px; height: auto; width: ${data.logoSize}px;` 
             : `width: ${data.logoSize}px; height: ${data.logoSize}px;`;
-        html += `<div style="margin-bottom: 10px;"><img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}"></div>`;
+        html += `<div style="margin-bottom: 10px;"><img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}" width="${data.logoSize}" height="${data.maintainRatio ? 'auto' : data.logoSize}"></div>`;
     }
     
     // Ad Soyad ve Pozisyon
@@ -441,19 +441,19 @@ function generateSimpleTemplate(data, fontFamily) {
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (socialMedia.length > 0) {
@@ -478,9 +478,9 @@ function generateProfessionalTemplate(data, fontFamily) {
     html += '<td style="vertical-align: middle; width: ' + (data.logoSize + 30) + 'px; padding-right: 20px; border-right: 3px solid ' + data.secondaryColor + ';">';
     if (data.logoUrl) {
         const logoStyle = data.maintainRatio 
-            ? `max-width: ${data.logoSize}px; height: auto; display: block; margin: 0 auto;` 
+            ? `max-width: ${data.logoSize}px; height: auto; width: ${data.logoSize}px; display: block; margin: 0 auto;` 
             : `width: ${data.logoSize}px; height: ${data.logoSize}px; display: block; margin: 0 auto;`;
-        html += `<img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}">`;
+        html += `<img src="${data.logoUrl}" alt="${data.company} Logo" style="${logoStyle}" width="${data.logoSize}" height="${data.maintainRatio ? 'auto' : data.logoSize}">`;
     }
     html += '</td>';
     
@@ -496,19 +496,19 @@ function generateProfessionalTemplate(data, fontFamily) {
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (socialMedia.length > 0) {
@@ -538,19 +538,19 @@ function generateModernTemplate(data, fontFamily) {
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (socialMedia.length > 0) {
@@ -576,19 +576,19 @@ function generateMinimalTemplate(data, fontFamily) {
     const socialMedia = [];
     
     if (data.linkedin && data.linkedin.enabled && data.linkedin.url) {
-        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.linkedin.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.twitter && data.twitter.enabled && data.twitter.url) {
-        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.twitter.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.facebook && data.facebook.enabled && data.facebook.url) {
-        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.facebook.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (data.instagram && data.instagram.enabled && data.instagram.url) {
-        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;"></a>`);
+        socialMedia.push(`<a href="${data.instagram.url}" style="text-decoration: none; margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="height: 20px; width: 20px;" width="20" height="20"></a>`);
     }
     
     if (socialMedia.length > 0) {
