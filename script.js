@@ -510,32 +510,76 @@ document.addEventListener('DOMContentLoaded', async function() {
         const signaturePreview = document.getElementById('signaturePreview');
         const htmlContent = signaturePreview.innerHTML;
         
-        // Outlook için özel div oluştur
-        const outlookDiv = document.createElement('div');
-        outlookDiv.setAttribute('contenteditable', 'true');
-        outlookDiv.innerHTML = htmlContent;
-        outlookDiv.style.position = 'fixed';
-        outlookDiv.style.left = '-9999px';
-        document.body.appendChild(outlookDiv);
+        // İmza içeriğini bir kapsayıcı içine alıyoruz - Outlook için
+        const tempDiv = document.createElement('div');
+        tempDiv.setAttribute('contenteditable', 'true');
+        tempDiv.innerHTML = htmlContent;
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '0';
+        tempDiv.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(tempDiv);
         
-        // İçeriği seç
-        const range = document.createRange();
-        range.selectNodeContents(outlookDiv);
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // Kopyala
-        const successful = document.execCommand('copy');
-        
-        // Geçici div'i kaldır
-        document.body.removeChild(outlookDiv);
-        
-        // Bildiri göster
-        if (successful) {
-            alert('İmza Outlook için kopyalandı! Outlook\'ta imza ayarlarına yapıştırabilirsiniz.');
-        } else {
-            alert('Kopyalama başarısız oldu. Lütfen tekrar deneyin.');
+        try {
+            // İçeriği tamamen seçiyoruz
+            const range = document.createRange();
+            range.selectNodeContents(tempDiv);
+            
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            // Kopyalama işlemi
+            const successful = document.execCommand('copy');
+            
+            // Sonuç raporu
+            if (successful) {
+                alert('İmza Outlook için kopyalandı! Outlook\'ta imza ayarlarına yapıştırabilirsiniz.');
+            } else {
+                throw new Error('Kopyalama işlemi başarısız oldu.');
+            }
+        } catch (err) {
+            console.error('Outlook kopyalama hatası:', err);
+            
+            // Alternatif bir yöntem deneyelim - kendi kopyalama metodumuzu kullanacağız
+            try {
+                // İmza HTML içeriğini alalım
+                const fullHTML = signaturePreview.outerHTML;
+                
+                // Clipboarda yazma işlemi (navigator clipboard API)
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(htmlContent)
+                        .then(() => {
+                            alert('İmza Outlook için kopyalandı! Outlook\'ta imza ayarlarına yapıştırabilirsiniz.');
+                        })
+                        .catch(err => {
+                            console.error('Clipboard API hatası:', err);
+                            alert('Kopyalama başarısız oldu. Lütfen manuel olarak seçip kopyalayın.');
+                        });
+                } else {
+                    // Yedek yöntem - textarea ile kopyalama
+                    const textarea = document.createElement('textarea');
+                    textarea.value = htmlContent;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    alert('İmza Outlook için kopyalandı! Outlook\'ta imza ayarlarına yapıştırabilirsiniz.');
+                }
+            } catch (backupErr) {
+                console.error('Yedek kopyalama hatası:', backupErr);
+                alert('Kopyalama başarısız oldu. Lütfen manuel olarak seçip kopyalayın.');
+            }
+        } finally {
+            // Geçici div'i temizle
+            document.body.removeChild(tempDiv);
+            
+            // Seçimi temizle
+            if (window.getSelection) {
+                window.getSelection().removeAllRanges();
+            }
         }
     });
 
