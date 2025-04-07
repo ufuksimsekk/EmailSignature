@@ -28,6 +28,9 @@ const userName = document.getElementById('userName');
 const verificationCodeGroup = document.getElementById('verificationCodeGroup');
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Otomatik giriş kontrolü
+    await checkAuth();
+
     // Tab değiştirme fonksiyonu
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(tab => {
@@ -1321,6 +1324,41 @@ async function registerUser(email, password, name) {
     }
 }
 
+// Kullanıcı girişi
+async function loginUser(email, password) {
+    try {
+        // E-posta formatı kontrolü
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Geçerli bir e-posta adresi girmelisiniz');
+        }
+        
+        // Şifre boş olmamalı
+        if (!password || password.trim() === '') {
+            throw new Error('Şifre alanı boş olamaz');
+        }
+        
+        const response = await fetch(`${API_URL}/users/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Giriş işlemi sırasında bir hata oluştu');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Giriş hatası:', error);
+        throw error;
+    }
+}
+
 // Kullanıcı işlemleri için fonksiyonlar
 async function handleRegister() {
     try {
@@ -1328,44 +1366,36 @@ async function handleRegister() {
         const password = authPassword.value;
         const name = authName.value.trim();
         
-        // Form doğrulama
-        if (!email || !password || !name) {
-            alert('Lütfen tüm alanları doldurun');
-            return;
-        }
-        
         // Kayıt işlemini başlat
-        authSubmitBtn.disabled = true;
-        authSubmitBtn.textContent = 'Kayıt olunuyor...';
-        
         const result = await registerUser(email, password, name);
         
-        // Doğrulama kodunu girmesi için form güncelle
-        modalTitle.textContent = 'E-posta Doğrulama';
-        authNameGroup.style.display = 'none';
-        authPassword.style.display = 'none';
-        document.querySelector('label[for="authPassword"]').style.display = 'none';
+        // Doğrulama kodu formunu göster
+        authEmail.disabled = true;
+        authPassword.disabled = true;
+        authName.disabled = true;
         verificationCodeGroup.style.display = 'block';
-        switchAuthMode.style.display = 'none';
-        document.getElementById('forgotPassword').style.display = 'none';
-        
-        authSubmitBtn.disabled = false;
         authSubmitBtn.textContent = 'Doğrula';
-        authSubmitBtn.onclick = function(e) {
+        
+        // Form gönderildiğinde artık doğrulama işlemi yapılacak
+        authForm.onsubmit = async function(e) {
             e.preventDefault();
             const code = document.getElementById('verificationCode').value.trim();
+            
             if (!code) {
-                alert('Lütfen doğrulama kodunu girin');
+                alert('Lütfen doğrulama kodunu giriniz');
                 return;
             }
-            verifyEmail(email, code);
+            
+            try {
+                await verifyEmail(email, code);
+            } catch (error) {
+                console.error('Doğrulama hatası:', error);
+            }
         };
         
-        alert(`Doğrulama kodu ${email} adresine gönderildi. Lütfen e-postanızı kontrol edin.`);
+        alert('Kayıt işlemi başarılı! Lütfen e-posta adresinize gelen doğrulama kodunu giriniz.');
     } catch (error) {
-        authSubmitBtn.disabled = false;
-        authSubmitBtn.textContent = 'Kayıt Ol';
-        alert(`${error.message}`);
+        alert('Kayıt başarısız: ' + error.message);
     }
 }
 
@@ -1427,6 +1457,37 @@ function updateUI() {
         loginBtn.style.display = 'block';
         registerBtn.style.display = 'block';
         userMenu.style.display = 'none';
+    }
+}
+
+// Kullanıcı oturum kontrolü
+async function checkAuth() {
+    const token = localStorage.getItem('userToken');
+    
+    if (!token) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/users/me`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            // Token geçersiz veya süresi dolmuş
+            localStorage.removeItem('userToken');
+            return;
+        }
+        
+        const data = await response.json();
+        currentUser = data;
+        updateUI();
+    } catch (error) {
+        console.error('Oturum kontrolü hatası:', error);
+        localStorage.removeItem('userToken');
     }
 }
 
