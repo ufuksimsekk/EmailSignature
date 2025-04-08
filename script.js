@@ -1527,24 +1527,6 @@ async function loadSignatureFromCloud(id) {
         const signature = await response.json();
         console.log('API\'den gelen imza verisi:', signature);
         
-        // Yerel depoda bu imzanın tam versiyonu var mı kontrol et
-        let savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-        let localSignature = null;
-        
-        // Eğer cloud ID'si eşleşen bir yerel imza varsa
-        for (const sig of savedSignatures) {
-            if (sig.cloudId && sig.cloudId === id) {
-                localSignature = sig;
-                break;
-            }
-        }
-        
-        if (localSignature) {
-            console.log('Bu imzanın yerel versiyonu bulundu, yerel veri kullanılacak:', localSignature);
-            loadSignatureToForm(localSignature);
-            return;
-        }
-        
         // API'den gelen veriyi doğrudan kullan
         const formattedSignature = {
             name: signature.name || '',
@@ -1583,12 +1565,6 @@ async function loadSignatureFromCloud(id) {
         };
         
         console.log('Formatlanmış imza verisi:', formattedSignature);
-        
-        // Formatlanmış imzayı yerel depolamaya kaydet
-        savedSignatures.push(formattedSignature);
-        localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
-        console.log('Formatlanmış imza yerel depolamaya kaydedildi');
-        
         loadSignatureToForm(formattedSignature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
