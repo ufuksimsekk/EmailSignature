@@ -1452,7 +1452,7 @@ function addSignatureEventListeners() {
     });
 }
 
-// İmza yükleme fonksiyonu
+// İmza yükleme fonksiyonu (Yerel)
 function loadSignatureFromLocal(index) {
     const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
     if (index >= 0 && index < savedSignatures.length) {
@@ -1461,109 +1461,7 @@ function loadSignatureFromLocal(index) {
     }
 }
 
-// Buluttan imza yükleme
-async function loadSignaturesFromCloud() {
-    try {
-        if (!currentUser || !currentUser.token) {
-            throw new Error('Kullanıcı giriş yapmamış');
-        }
-        
-        console.log('Bulut imzalarını yüklemeye başlıyor... Token:', currentUser.token?.substring(0, 10) + '...');
-        
-        const response = await fetch(`${API_URL}/users/signatures`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${currentUser.token}`
-            }
-        });
-        
-        console.log('API Yanıtı Status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Hata Yanıt Metni:', errorText);
-            
-            try {
-                const errorData = JSON.parse(errorText);
-                console.error('API Hata Detayı:', errorData);
-                throw new Error(errorData.error || 'İmzalar yüklenemedi');
-            } catch (parseError) {
-                console.error('Hata yanıtı JSON değil:', parseError);
-                throw new Error(`İmzalar yüklenemedi. Status: ${response.status}, Yanıt: ${errorText.substring(0, 100)}...`);
-            }
-        }
-        
-        const responseText = await response.text();
-        console.log('API Yanıt (ham metin):', responseText.substring(0, 200) + '...');
-        
-        // Boş yanıt kontrolü
-        if (!responseText || responseText.trim() === '') {
-            console.log('API boş yanıt döndü, boş dizi kullanılıyor');
-            return [];
-        }
-        
-        try {
-            const signatures = JSON.parse(responseText);
-            console.log('İşlenen imzalar türü:', typeof signatures);
-            
-            if (typeof signatures === 'object') {
-                console.log('İmzalar obje anahtarları:', Object.keys(signatures));
-            }
-            
-            if (Array.isArray(signatures)) {
-                console.log('Dizi uzunluğu:', signatures.length);
-                if (signatures.length > 0) {
-                    console.log('İlk imza örneği:', JSON.stringify(signatures[0]).substring(0, 100) + '...');
-                }
-                return signatures;
-            } else if (signatures.signatures && Array.isArray(signatures.signatures)) {
-                console.log('signatures alanı dizi uzunluğu:', signatures.signatures.length);
-                return signatures.signatures;
-            } else if (signatures.items && Array.isArray(signatures.items)) {
-                console.log('items alanı dizi uzunluğu:', signatures.items.length);
-                return signatures.items;
-            } else if (signatures.data && Array.isArray(signatures.data)) {
-                console.log('data alanı dizi uzunluğu:', signatures.data.length);
-                return signatures.data;
-            } else {
-                console.warn('Beklenmeyen API yanıt formatı:', JSON.stringify(signatures).substring(0, 100) + '...');
-                
-                // Objeden dizi çıkarma denemeleri
-                if (typeof signatures === 'object') {
-                    // Anahtar-değer çiftlerinden dizi oluşturma
-                    const entries = Object.entries(signatures);
-                    if (entries.length > 0 && typeof entries[0][1] === 'object') {
-                        console.log('Objeden dizi oluşturuluyor, anahtar-değer çiftlerinden');
-                        const signatureArray = entries.map(([id, data]) => ({
-                            id,
-                            ...data
-                        }));
-                        console.log('Oluşturulan dizi uzunluğu:', signatureArray.length);
-                        return signatureArray;
-                    }
-                    
-                    // Objedeki tüm dizi türündeki değerleri bul
-                    const arrayValues = Object.values(signatures).filter(val => Array.isArray(val));
-                    if (arrayValues.length > 0) {
-                        console.log('Objeden ilk dizi değeri kullanılıyor, uzunluk:', arrayValues[0].length);
-                        return arrayValues[0];
-                    }
-                }
-                
-                console.error('Dizi formatına dönüştürülemedi, boş dizi döndürülüyor');
-                return [];
-            }
-        } catch (parseError) {
-            console.error('JSON parse hatası:', parseError);
-            throw new Error('API yanıtı geçerli JSON değil: ' + responseText.substring(0, 50) + '...');
-        }
-    } catch (error) {
-        console.error('Buluttan yükleme hatası:', error);
-        throw error;
-    }
-}
-
-// Buluttan tekil imza yükleme
+// İmza yükleme fonksiyonu (Bulut)
 async function loadSignatureFromCloud(id) {
     try {
         if (!currentUser || !currentUser.token) {
@@ -1583,7 +1481,6 @@ async function loadSignatureFromCloud(id) {
         }
         
         const signature = await response.json();
-        switchTab('editor'); // Editör sekmesine geç
         loadSignatureToForm(signature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
