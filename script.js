@@ -1571,7 +1571,11 @@ async function loadSignatureToForm(signature) {
         for (const [fieldId, value] of Object.entries(formFields)) {
             const element = document.getElementById(fieldId);
             if (element) {
-                element.value = value;
+                if (element.type === 'checkbox') {
+                    element.checked = Boolean(value);
+                } else {
+                    element.value = value;
+                }
             } else {
                 console.warn(`${fieldId} elementi bulunamadı`);
             }
@@ -1585,13 +1589,48 @@ async function loadSignatureToForm(signature) {
         const logoControlPanel = document.getElementById('logoControlPanel');
         if (logoControlPanel) {
             logoControlPanel.style.display = standardizedSignature.logoUrl ? 'block' : 'none';
+            
+            // Logo boyut slider'ını güncelle
+            const logoSizeSlider = document.getElementById('logoSize');
+            if (logoSizeSlider) {
+                logoSizeSlider.value = logoSize;
+            }
+            
+            // Logo boyut değerini güncelle
+            const logoSizeValue = document.getElementById('logoSizeValue');
+            if (logoSizeValue) {
+                logoSizeValue.textContent = `${logoSize}px`;
+            }
+            
+            // Oran koruma checkbox'ını güncelle
+            const maintainRatioCheckbox = document.getElementById('logoMaintainRatio');
+            if (maintainRatioCheckbox) {
+                maintainRatioCheckbox.checked = maintainRatio;
+            }
         }
+
+        // Sosyal medya checkbox'larını güncelle
+        const socialMediaFields = ['linkedin', 'twitter', 'facebook', 'instagram', 'youtube', 'github'];
+        socialMediaFields.forEach(social => {
+            const checkbox = document.getElementById(social);
+            const urlInput = document.getElementById(`${social}Url`);
+            
+            if (checkbox && urlInput) {
+                const hasUrl = Boolean(standardizedSignature.socialMedia?.[social]);
+                checkbox.checked = hasUrl;
+                urlInput.style.display = hasUrl ? 'block' : 'none';
+            }
+        });
 
         // İmzayı oluştur
         generateSignature();
+
+        // Başarılı yükleme bildirimi
+        showNotification('İmza başarıyla yüklendi', 'success');
     } catch (error) {
         console.error('Form yükleme hatası:', error);
         showNotification(error.message || 'Form yüklenirken bir hata oluştu', 'error');
+        throw error; // Hata yönetimini üst katmana bırak
     }
 }
 
