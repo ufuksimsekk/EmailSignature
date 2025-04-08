@@ -1527,45 +1527,8 @@ async function loadSignatureFromCloud(id) {
         const signature = await response.json();
         console.log('API\'den gelen imza verisi:', signature);
         
-        // API'den gelen veriyi doğrudan kullan
-        const formattedSignature = {
-            name: signature.name || '',
-            title: signature.title || '',
-            company: signature.company || '',
-            email: signature.email || '',
-            phone: signature.phone || '',
-            website: signature.website || '',
-            address: signature.address || '',
-            template: signature.template || 'simple',
-            font: signature.font || 'Arial',
-            fontSize: signature.fontSize || '14px',
-            primaryColor: signature.primaryColor || '#3498db',
-            secondaryColor: signature.secondaryColor || '#2c3e50',
-            logoUrl: signature.logoUrl || '',
-            avatarUrl: signature.avatarUrl || '',
-            disclaimer: signature.disclaimer || '',
-            linkedin: {
-                enabled: signature.linkedin?.enabled || false,
-                url: signature.linkedin?.url || ''
-            },
-            twitter: {
-                enabled: signature.twitter?.enabled || false,
-                url: signature.twitter?.url || ''
-            },
-            facebook: {
-                enabled: signature.facebook?.enabled || false,
-                url: signature.facebook?.url || ''
-            },
-            instagram: {
-                enabled: signature.instagram?.enabled || false,
-                url: signature.instagram?.url || ''
-            },
-            html: signature.html || '',
-            cloudId: id
-        };
-        
-        console.log('Formatlanmış imza verisi:', formattedSignature);
-        loadSignatureToForm(formattedSignature);
+        // API'den gelen veriyi doğrudan kullan, formatlama yapmadan
+        loadSignatureToForm(signature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
         alert('İmza yüklenemedi: ' + error.message);
