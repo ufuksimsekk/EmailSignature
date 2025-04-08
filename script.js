@@ -1166,7 +1166,12 @@ function generateMinimalTemplate(data, fontFamily) {
     return html;
 }
 
+// Form verilerini topla
 function collectFormData() {
+    const logoUrl = document.getElementById('logoUrl').value;
+    const logoSize = parseInt(document.getElementById('logoSize').value) || 80;
+    const maintainRatio = document.getElementById('logoMaintainRatio').checked;
+
     return {
         name: document.getElementById('name').value,
         title: document.getElementById('title').value,
@@ -1180,7 +1185,7 @@ function collectFormData() {
         fontSize: document.getElementById('fontSize').value,
         primaryColor: document.getElementById('primaryColor').value,
         secondaryColor: document.getElementById('secondaryColor').value,
-        logoUrl: document.getElementById('logoUrl').value,
+        logoUrl: logoUrl,
         avatarUrl: document.getElementById('avatarUrl').value,
         disclaimer: document.getElementById('disclaimer').value,
         logoSize: logoSize,
@@ -2312,76 +2317,30 @@ function standardizeSignatureData(data) {
             lastModified: new Date().toISOString()
         };
 
-        // Veri doğrulama
-        if (!standardizedData.name) {
-            throw new Error('İsim alanı zorunludur');
-        }
-
-        if (!standardizedData.email) {
-            throw new Error('E-posta alanı zorunludur');
-        }
-
-        // E-posta formatı kontrolü
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(standardizedData.email)) {
-            throw new Error('Geçersiz e-posta formatı');
-        }
-
-        // Renk formatı kontrolü
-        const colorRegex = /^#[0-9A-Fa-f]{6}$/;
-        if (!colorRegex.test(standardizedData.primaryColor)) {
-            throw new Error('Geçersiz birincil renk formatı');
-        }
-        if (!colorRegex.test(standardizedData.secondaryColor)) {
-            throw new Error('Geçersiz ikincil renk formatı');
-        }
-
-        // URL formatı kontrolü (opsiyonel alanlar için)
-        function isValidUrl(url) {
-            if (!url) return true; // Boş URL'lere izin ver
-            try {
-                new URL(url);
-                return true;
-            } catch {
-                // URL protokol içermiyorsa, http:// ekleyip tekrar dene
-                try {
-                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                        new URL('http://' + url);
-                        return true;
-                    }
-                } catch {
-                    return false;
-                }
-                return false;
-            }
-        }
-
-        // URL'leri kontrol et ve gerekirse düzelt
-        if (standardizedData.website) {
-            if (!isValidUrl(standardizedData.website)) {
-                throw new Error('Geçersiz website URL formatı');
-            }
-            if (!standardizedData.website.startsWith('http://') && !standardizedData.website.startsWith('https://')) {
-                standardizedData.website = 'http://' + standardizedData.website;
-            }
-        }
-
+        // Logo URL'sini doğrula ve düzelt
         if (standardizedData.logoUrl) {
-            if (!isValidUrl(standardizedData.logoUrl)) {
-                throw new Error('Geçersiz logo URL formatı');
-            }
-            if (!standardizedData.logoUrl.startsWith('http://') && !standardizedData.logoUrl.startsWith('https://')) {
-                standardizedData.logoUrl = 'http://' + standardizedData.logoUrl;
+            // Base64 veya data URL kontrolü
+            if (standardizedData.logoUrl.startsWith('data:')) {
+                // Base64 veya data URL ise olduğu gibi bırak
+                console.log('Logo URL bir data URL olarak kabul edildi');
+            } else {
+                // Normal URL ise protokol ekle ve doğrula
+                if (!standardizedData.logoUrl.startsWith('http://') && !standardizedData.logoUrl.startsWith('https://')) {
+                    standardizedData.logoUrl = 'https://' + standardizedData.logoUrl;
+                }
+                
+                // URL formatını doğrula
+                try {
+                    new URL(standardizedData.logoUrl);
+                } catch (e) {
+                    throw new Error('Geçersiz logo URL formatı');
+                }
             }
         }
 
-        if (standardizedData.avatarUrl) {
-            if (!isValidUrl(standardizedData.avatarUrl)) {
-                throw new Error('Geçersiz avatar URL formatı');
-            }
-            if (!standardizedData.avatarUrl.startsWith('http://') && !standardizedData.avatarUrl.startsWith('https://')) {
-                standardizedData.avatarUrl = 'http://' + standardizedData.avatarUrl;
-            }
+        // Logo boyutlarını doğrula
+        if (standardizedData.logoSize < 10 || standardizedData.logoSize > 500) {
+            standardizedData.logoSize = 80; // Varsayılan değer
         }
 
         return standardizedData;
