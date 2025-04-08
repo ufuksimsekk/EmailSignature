@@ -1525,10 +1525,10 @@ async function loadSignatureFromCloud(id) {
         }
         
         const signature = await response.json();
-        console.log('API\'den gelen orijinal imza verisi:', signature);
+        console.log('API\'den gelen imza verisi:', signature);
         
         // Yerel depoda bu imzanın tam versiyonu var mı kontrol et
-        const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+        let savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
         let localSignature = null;
         
         // Eğer cloud ID'si eşleşen bir yerel imza varsa
@@ -1545,172 +1545,51 @@ async function loadSignatureFromCloud(id) {
             return;
         }
         
-        // Eğer signature.html varsa ve diğer alanlar eksikse, HTML'den veri çıkarmayı deneyelim
-        if (signature.html && (!signature.name || !signature.title)) {
-            console.log('HTML içeriğinden veri çıkarma işlemi başlatılıyor...');
-            
-            // HTML içeriğini bir div'e ekleyelim ve DOM API'sini kullanarak veri çıkaralım
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = signature.html;
-            
-            // Veri çıkarma işlemi - adı, unvanı, şirketi vb. bulmaya çalışalım
-            let extractedName = '';
-            let extractedTitle = '';
-            let extractedCompany = '';
-            let extractedEmail = '';
-            let extractedPhone = '';
-            let extractedWebsite = '';
-            let extractedAddress = '';
-            
-            // İsim için genellikle büyük/kalın yazı tipinde olacaktır
-            const possibleNameElements = tempDiv.querySelectorAll('strong, b, h1, h2, h3, h4, h5, h6, [style*="font-weight: bold"], [style*="font-weight:bold"]');
-            if (possibleNameElements.length > 0) {
-                extractedName = possibleNameElements[0].textContent.trim();
-            }
-            
-            // E-posta için @ işaretli metin veya href="mailto:" olan link
-            const emailLinks = tempDiv.querySelectorAll('a[href^="mailto:"]');
-            if (emailLinks.length > 0) {
-                extractedEmail = emailLinks[0].getAttribute('href').replace('mailto:', '').trim();
-            } else {
-                // @ işaretini içeren metin bul
-                const allText = tempDiv.textContent;
-                const emailRegex = /[\w.-]+@[\w.-]+\.\w+/;
-                const emailMatch = allText.match(emailRegex);
-                if (emailMatch) {
-                    extractedEmail = emailMatch[0];
-                }
-            }
-            
-            // Telefon numarası için formatları kontrol et
-            const phoneRegex = /(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
-            const allText = tempDiv.textContent;
-            const phoneMatch = allText.match(phoneRegex);
-            if (phoneMatch) {
-                extractedPhone = phoneMatch[0];
-            }
-            
-            // Web sitesi için http veya www ile başlayan linkler
-            const websiteLinks = tempDiv.querySelectorAll('a[href^="http"], a[href^="www"]');
-            if (websiteLinks.length > 0) {
-                extractedWebsite = websiteLinks[0].getAttribute('href').trim();
-            }
-            
-            // Şirket ve unvan için metin içeriğinde arama yap
-            const allTextLines = tempDiv.textContent.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
-            
-            // İsimden sonraki satır genellikle unvan veya şirket olur
-            if (allTextLines.length > 1 && extractedName) {
-                const nameIndex = allTextLines.findIndex(line => line.includes(extractedName));
-                if (nameIndex >= 0 && nameIndex + 1 < allTextLines.length) {
-                    const nextLine = allTextLines[nameIndex + 1];
-                    // Eğer | karakteri varsa, muhtemelen "Unvan | Şirket" formatında
-                    if (nextLine.includes('|')) {
-                        const parts = nextLine.split('|').map(part => part.trim());
-                        extractedTitle = parts[0];
-                        extractedCompany = parts[1] || '';
-                    } else {
-                        extractedTitle = nextLine;
-                    }
-                }
-            }
-            
-            // Çıkarılan verileri orijinal imza nesnesine entegre et
-            const formattedSignature = {
-                name: signature.name || extractedName || '',
-                title: signature.title || extractedTitle || '',
-                company: signature.company || extractedCompany || '',
-                email: signature.email || extractedEmail || '',
-                phone: signature.phone || extractedPhone || '',
-                website: signature.website || extractedWebsite || '',
-                address: signature.address || extractedAddress || '',
-                template: signature.template || 'simple',
-                font: signature.font || 'Arial',
-                fontSize: signature.fontSize || '14px',
-                primaryColor: signature.primaryColor || '#3498db',
-                secondaryColor: signature.secondaryColor || '#2c3e50',
-                logoUrl: signature.logoUrl || '',
-                avatarUrl: signature.avatarUrl || '',
-                disclaimer: signature.disclaimer || '',
-                linkedin: {
-                    enabled: signature.linkedin?.enabled || false,
-                    url: signature.linkedin?.url || ''
-                },
-                twitter: {
-                    enabled: signature.twitter?.enabled || false,
-                    url: signature.twitter?.url || ''
-                },
-                facebook: {
-                    enabled: signature.facebook?.enabled || false,
-                    url: signature.facebook?.url || ''
-                },
-                instagram: {
-                    enabled: signature.instagram?.enabled || false,
-                    url: signature.instagram?.url || ''
-                },
-                html: signature.html || '',
-                cloudId: id // Bulut ID'sini ekleyelim
-            };
-            
-            console.log('HTML\'den çıkarılan ve formatlanmış imza verisi:', formattedSignature);
-            
-            // Formatlanmış imzayı yerel depolamaya da kaydedelim
-            const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-            savedSignatures.push(formattedSignature);
-            localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
-            console.log('Formatlanmış imza yerel depolamaya kaydedildi');
-            
-            loadSignatureToForm(formattedSignature);
-        } else {
-            // Normal formatlama işlemi
-            const formattedSignature = {
-                name: signature.name || '',
-                title: signature.title || '',
-                company: signature.company || '',
-                email: signature.email || '',
-                phone: signature.phone || '',
-                website: signature.website || '',
-                address: signature.address || '',
-                template: signature.template || 'simple',
-                font: signature.font || 'Arial',
-                fontSize: signature.fontSize || '14px',
-                primaryColor: signature.primaryColor || '#3498db',
-                secondaryColor: signature.secondaryColor || '#2c3e50',
-                logoUrl: signature.logoUrl || '',
-                avatarUrl: signature.avatarUrl || '',
-                disclaimer: signature.disclaimer || '',
-                linkedin: {
-                    enabled: signature.linkedin?.enabled || false,
-                    url: signature.linkedin?.url || ''
-                },
-                twitter: {
-                    enabled: signature.twitter?.enabled || false,
-                    url: signature.twitter?.url || ''
-                },
-                facebook: {
-                    enabled: signature.facebook?.enabled || false,
-                    url: signature.facebook?.url || ''
-                },
-                instagram: {
-                    enabled: signature.instagram?.enabled || false,
-                    url: signature.instagram?.url || ''
-                },
-                html: signature.html || '',
-                cloudId: id // Bulut ID'sini ekleyelim
-            };
-            
-            console.log('Formatlanmış imza verisi:', formattedSignature);
-            
-            // Formatlanmış imzayı yerel depolamaya da kaydedelim
-            const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-            savedSignatures.push(formattedSignature);
-            localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
-            console.log('Formatlanmış imza yerel depolamaya kaydedildi');
-            
-            loadSignatureToForm(formattedSignature);
-        }
+        // API'den gelen veriyi doğrudan kullan
+        const formattedSignature = {
+            name: signature.name || '',
+            title: signature.title || '',
+            company: signature.company || '',
+            email: signature.email || '',
+            phone: signature.phone || '',
+            website: signature.website || '',
+            address: signature.address || '',
+            template: signature.template || 'simple',
+            font: signature.font || 'Arial',
+            fontSize: signature.fontSize || '14px',
+            primaryColor: signature.primaryColor || '#3498db',
+            secondaryColor: signature.secondaryColor || '#2c3e50',
+            logoUrl: signature.logoUrl || '',
+            avatarUrl: signature.avatarUrl || '',
+            disclaimer: signature.disclaimer || '',
+            linkedin: {
+                enabled: signature.linkedin?.enabled || false,
+                url: signature.linkedin?.url || ''
+            },
+            twitter: {
+                enabled: signature.twitter?.enabled || false,
+                url: signature.twitter?.url || ''
+            },
+            facebook: {
+                enabled: signature.facebook?.enabled || false,
+                url: signature.facebook?.url || ''
+            },
+            instagram: {
+                enabled: signature.instagram?.enabled || false,
+                url: signature.instagram?.url || ''
+            },
+            html: signature.html || '',
+            cloudId: id
+        };
+        
+        console.log('Formatlanmış imza verisi:', formattedSignature);
+        
+        // Formatlanmış imzayı yerel depolamaya kaydet
+        savedSignatures.push(formattedSignature);
+        localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+        console.log('Formatlanmış imza yerel depolamaya kaydedildi');
+        
+        loadSignatureToForm(formattedSignature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
         alert('İmza yüklenemedi: ' + error.message);
