@@ -1488,69 +1488,15 @@ async function loadSignatureFromCloud(id) {
     }
 }
 
-// İmza verisini normalize eden yardımcı fonksiyon
-function normalizeSignatureData(data) {
-    console.log('Normalize ediliyor:', data);
-    
-    // Eğer zaten uygun formattaysa direkt dön
-    if (data && typeof data === 'object' && 
-        (data.template || data.font || data.fontSize)) {
-        return data;
-    }
-    
-    let normalizedData = { ...data };
-    
-    // Eğer settings objesi içeriyorsa
-    if (data.settings && typeof data.settings === 'object') {
-        normalizedData = {
-            ...normalizedData,
-            ...data.settings,
-        };
-    }
-    
-    // Eğer data objesi içeriyorsa
-    if (data.data && typeof data.data === 'object') {
-        normalizedData = {
-            ...normalizedData,
-            ...data.data,
-        };
-    }
-    
-    // Diğer zorunlu alanları ekle
-    if (!normalizedData.name && data.name) {
-        normalizedData.name = data.name;
-    }
-    
-    if (!normalizedData.html && data.html) {
-        normalizedData.html = data.html;
-    }
-    
-    if (!normalizedData.id && data.id) {
-        normalizedData.id = data.id;
-    }
-    
-    // Sosyal medya alanlarını düzenle
-    ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
-        // Eğer sosyal medya nesnesi yoksa veya URL formatı yanlışsa düzelt
-        if (data[social] && typeof data[social] === 'string') {
-            normalizedData[social] = {
-                enabled: true,
-                url: data[social]
-            };
-        }
-    });
-    
-    console.log('Normalize edilmiş veri:', normalizedData);
-    return normalizedData;
-}
+
 
 // Form verilerini doldur
-function loadSignatureToForm(signature) {
-    try {
-        // Öğeleri sıfırlayalım
-        resetForm();
+function loadSignatureToForm(index) {
+    const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+    if (index >= 0 && index < savedSignatures.length) {
+        const signature = savedSignatures[index];
         
-        // Temel alanları doldur
+        // Form alanlarını doldur
         document.getElementById('name').value = signature.name || '';
         document.getElementById('title').value = signature.title || '';
         document.getElementById('company').value = signature.company || '';
@@ -1558,294 +1504,38 @@ function loadSignatureToForm(signature) {
         document.getElementById('phone').value = signature.phone || '';
         document.getElementById('website').value = signature.website || '';
         document.getElementById('address').value = signature.address || '';
-        
-        // Şablon ve stil ayarları
         document.getElementById('template').value = signature.template || 'simple';
         document.getElementById('font').value = signature.font || 'Arial';
         document.getElementById('fontSize').value = signature.fontSize || '14px';
         document.getElementById('primaryColor').value = signature.primaryColor || '#3498db';
-        document.getElementById('primaryColorHex').value = signature.primaryColor || '#3498db';
         document.getElementById('secondaryColor').value = signature.secondaryColor || '#2c3e50';
-        document.getElementById('secondaryColorHex').value = signature.secondaryColor || '#2c3e50';
-        
-        // Şablon seçimini güncelle
-        document.querySelectorAll('.template').forEach(template => {
-            template.classList.remove('selected');
-            if (template.getAttribute('data-template') === (signature.template || 'simple')) {
-                template.classList.add('selected');
-            }
-        });
-        
-        // Logo ve avatar ayarları
         document.getElementById('logoUrl').value = signature.logoUrl || '';
         document.getElementById('avatarUrl').value = signature.avatarUrl || '';
         document.getElementById('disclaimer').value = signature.disclaimer || '';
         
-        // Logo boyut ayarları
-        logoSize = signature.logoSize || 80;
-        document.getElementById('logoSize').value = logoSize;
-        document.getElementById('logoSizeValue').textContent = logoSize + 'px';
+        // Sosyal medya ayarlarını güncelle
+        document.getElementById('linkedin').checked = signature.linkedin?.enabled || false;
+        document.getElementById('twitter').checked = signature.twitter?.enabled || false;
+        document.getElementById('facebook').checked = signature.facebook?.enabled || false;
+        document.getElementById('instagram').checked = signature.instagram?.enabled || false;
         
-        // Oran koruma ayarları
-        if (typeof signature.maintainRatio !== 'undefined') {
-            maintainRatio = signature.maintainRatio;
-        } else {
-            maintainRatio = true; // Varsayılan değer
-        }
-        
-        document.getElementById('logoMaintainRatio').checked = maintainRatio;
-        
-        // Sosyal medya ayarları
-        
-        // LinkedIn
-        if (signature.linkedin) {
-            document.getElementById('linkedin').checked = signature.linkedin.enabled || false;
-            document.getElementById('linkedinUrl').value = signature.linkedin.url || '';
-        } else {
-            document.getElementById('linkedin').checked = false;
-            document.getElementById('linkedinUrl').value = '';
-        }
-        
-        // Twitter
-        if (signature.twitter) {
-            document.getElementById('twitter').checked = signature.twitter.enabled || false;
-            document.getElementById('twitterUrl').value = signature.twitter.url || '';
-        } else {
-            document.getElementById('twitter').checked = false;
-            document.getElementById('twitterUrl').value = '';
-        }
-        
-        // Facebook
-        if (signature.facebook) {
-            document.getElementById('facebook').checked = signature.facebook.enabled || false;
-            document.getElementById('facebookUrl').value = signature.facebook.url || '';
-        } else {
-            document.getElementById('facebook').checked = false;
-            document.getElementById('facebookUrl').value = '';
-        }
-        
-        // Instagram
-        if (signature.instagram) {
-            document.getElementById('instagram').checked = signature.instagram.enabled || false;
-            document.getElementById('instagramUrl').value = signature.instagram.url || '';
-        } else {
-            document.getElementById('instagram').checked = false;
-            document.getElementById('instagramUrl').value = '';
-        }
+        document.getElementById('linkedinUrl').value = signature.linkedin?.url || '';
+        document.getElementById('twitterUrl').value = signature.twitter?.url || '';
+        document.getElementById('facebookUrl').value = signature.facebook?.url || '';
+        document.getElementById('instagramUrl').value = signature.instagram?.url || '';
         
         // Sosyal medya input alanlarını göster/gizle
         updateSocialLinksVisibility();
         
-        // Logo kontrollerinin görünürlüğünü logo URL'sine göre ayarla
-        const logoControls = document.querySelector('.logo-size-controls');
-        logoControls.style.display = signature.logoUrl ? 'block' : 'none';
-        
-        // Eğer sadece HTML içerik varsa ve diğer alanlar eksikse,
-        // HTML içeriğini parse ederek bilgileri çıkarmaya çalış
-        if (signature.html && 
-            (!signature.title || !signature.company || !signature.email)) {
-            extractDataFromHTML(signature.html);
-        }
-        
         // İmzayı oluştur
-        setTimeout(() => {
-            generateSignature();
-            console.log('İmza yükleme tamamlandı ve önizleme güncellendi');
-        }, 100);
-        
-    } catch (error) {
-        console.error('Form doldurma hatası:', error);
-        alert('İmza yüklenirken bir hata oluştu: ' + error.message);
-    }
-}
-
-// HTML içeriğinden metin içeriklerini çıkar
-function extractDataFromHTML(htmlContent) {
-    try {
-        // HTML'i parse edelim
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlContent, 'text/html');
-        
-        // Ad soyad için renkli veya kalın metin ara
-        const nameElement = doc.querySelector('div[style*="color:"][style*="font-weight: bold"], div[style*="color:"][style*="font-weight:bold"], div[style*="font-weight: bold"]');
-        if (nameElement && !document.getElementById('name').value) {
-            document.getElementById('name').value = nameElement.textContent.trim();
-        }
-        
-        // Tüm metin içeren öğeleri al
-        const allElements = doc.querySelectorAll('div, span, p, td');
-        const allTexts = Array.from(allElements)
-            .map(el => el.textContent.trim())
-            .filter(text => text && text.length > 0);
-        
-        if (allTexts.length === 0) return;
-        
-        console.log('İmzadaki tüm metinler:', allTexts);
-        
-        // Eğer ad doldurulmadıysa, ilk metni ad olarak kullan
-        if (!document.getElementById('name').value && allTexts[0]) {
-            document.getElementById('name').value = allTexts[0];
-        }
-        
-        // Pozisyon ve şirket için | içeren metinleri ara
-        for (const element of allElements) {
-            const text = element.textContent.trim();
-            if (text.includes('|')) {
-                const parts = text.split('|').map(part => part.trim());
-                if (parts.length >= 2) {
-                    // İlk bölüm pozisyon, ikinci bölüm şirket
-                    if (!document.getElementById('title').value) {
-                        document.getElementById('title').value = parts[0];
-                    }
-                    if (!document.getElementById('company').value) {
-                        document.getElementById('company').value = parts[1];
-                    }
-                    break;
-                }
-            }
-        }
-        
-        // E-posta adresi ara
-        for (const element of allElements) {
-            const text = element.textContent.trim();
-            if (text.includes('@') && text.includes('.') && !document.getElementById('email').value) {
-                const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-                if (emailMatch) {
-                    document.getElementById('email').value = emailMatch[0];
-                    break;
-                }
-            }
-        }
-        
-        // Telefon numarası ara
-        for (const element of allElements) {
-            const text = element.textContent.trim();
-            if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(text) && !document.getElementById('phone').value) {
-                const phoneMatch = text.match(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/);
-                if (phoneMatch) {
-                    document.getElementById('phone').value = phoneMatch[0];
-                    break;
-                }
-            }
-        }
-        
-        // Website ara
-        for (const element of allElements) {
-            const text = element.textContent.trim();
-            if ((text.includes('www.') || text.includes('http')) && !document.getElementById('website').value) {
-                const websiteMatch = text.match(/(https?:\/\/|www\.)[^\s,]+/);
-                if (websiteMatch) {
-                    document.getElementById('website').value = websiteMatch[0];
-                    break;
-                }
-            }
-        }
-        
-        // Adres ara
-        const addressElements = Array.from(allElements).filter(el => {
-            const content = el.textContent.trim();
-            return content.length > 15 && 
-                   (content.includes(',') || 
-                    /\d+\s+[A-Za-zÇçĞğİıÖöŞşÜü]+(\s+[A-Za-zÇçĞğİıÖöŞşÜü]+)+/.test(content)) &&
-                   !content.includes('@') && 
-                   !content.includes('www.') && 
-                   !/^\+?\d+[\d\s]+$/.test(content);
-        });
-        
-        if (addressElements.length > 0 && !document.getElementById('address').value) {
-            document.getElementById('address').value = addressElements[0].textContent.trim();
-            cleanAddressField();
-        }
-        
-        // Sosyal medya linkleri
-        const socialLinks = doc.querySelectorAll('a[href]');
-        for (const link of socialLinks) {
-            const href = link.getAttribute('href');
-            
-            if (href.includes('linkedin.com')) {
-                document.getElementById('linkedin').checked = true;
-                document.getElementById('linkedinUrl').value = href;
-            } else if (href.includes('twitter.com') || href.includes('x.com')) {
-                document.getElementById('twitter').checked = true;
-                document.getElementById('twitterUrl').value = href;
-            } else if (href.includes('facebook.com')) {
-                document.getElementById('facebook').checked = true;
-                document.getElementById('facebookUrl').value = href;
-            } else if (href.includes('instagram.com')) {
-                document.getElementById('instagram').checked = true;
-                document.getElementById('instagramUrl').value = href;
-            }
-        }
-        
-        // Sosyal medya görünürlüğünü güncelle
-        updateSocialLinksVisibility();
-        
-        // İmzayı tekrar oluştur
         generateSignature();
-    } catch (error) {
-        console.error('HTML içeriğinden veri çıkarma hatası:', error);
+        
+        // Editör sekmesine geç
+        switchTab('editor');
     }
 }
 
-// Adres alanını temizle
-function cleanAddressField() {
-    const addressField = document.getElementById('address');
-    if (addressField.value) {
-        // E-postaları kaldır
-        if (addressField.value.includes('@')) {
-            addressField.value = addressField.value.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim();
-        }
-        
-        // Telefon numaralarını kaldır
-        if (/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/.test(addressField.value)) {
-            addressField.value = addressField.value.replace(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}/g, '').trim();
-        }
-        
-        // Web sitelerini kaldır
-        if (addressField.value.includes('www.') || addressField.value.includes('http')) {
-            addressField.value = addressField.value.replace(/(https?:\/\/|www\.)[^\s,]+/g, '').trim();
-        }
-        
-        // Çift boşlukları tek boşluğa çevirme
-        addressField.value = addressField.value.replace(/\s+/g, ' ').trim();
-        
-        // Gereksiz noktalama işaretlerini temizle
-        addressField.value = addressField.value.replace(/^[,\s]+|[,\s]+$/g, '').trim();
-        
-        // Eğer adres alanında sadece 1-2 kelime kaldıysa, muhtemelen adres değildir
-        if (addressField.value.split(/\s+/).length <= 2) {
-            addressField.value = '';
-        }
-    }
-}
 
-// Form alanlarını sıfırla
-function resetForm() {
-    // Temel bilgileri temizle
-    document.getElementById('title').value = '';
-    document.getElementById('company').value = '';
-    document.getElementById('email').value = '';
-    document.getElementById('phone').value = '';
-    document.getElementById('website').value = '';
-    document.getElementById('address').value = '';
-    
-    // Sosyal medya ayarlarını sıfırla
-    ['linkedin', 'twitter', 'facebook', 'instagram'].forEach(social => {
-        document.getElementById(social).checked = false;
-        document.getElementById(`${social}Url`).value = '';
-    });
-    
-    // Sosyal medya input alanlarını gizle
-    document.getElementById('socialLinksContainer').style.display = 'none';
-    
-    // Logo ve avatar ayarlarını sıfırla
-    document.getElementById('logoUrl').value = '';
-    document.getElementById('avatarUrl').value = '';
-    document.getElementById('disclaimer').value = '';
-    
-    // Logo kontrollerini gizle
-    document.querySelector('.logo-size-controls').style.display = 'none';
-}
 
 // İmza silme fonksiyonu
 function deleteSignatureFromLocal(index) {
