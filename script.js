@@ -2242,9 +2242,76 @@ function validateSignatureData(data) {
 
 // İmza verilerini standardize etme fonksiyonu
 function standardizeSignatureData(data) {
-    const validation = validateSignatureData(data);
-    if (!validation.isValid) {
-        throw new Error(`Veri doğrulama hatası: ${validation.errors.join(', ')}`);
+    try {
+        // Temel veri yapısını oluştur
+        const standardizedData = {
+            name: String(data.name || ''),
+            title: String(data.title || ''),
+            company: String(data.company || ''),
+            email: String(data.email || ''),
+            phone: String(data.phone || ''),
+            website: String(data.website || ''),
+            address: String(data.address || ''),
+            font: String(data.font || 'Arial'),
+            fontSize: data.fontSize ? String(data.fontSize).replace('px', '') : '12',
+            primaryColor: String(data.primaryColor || '#000000'),
+            secondaryColor: String(data.secondaryColor || '#666666'),
+            logoUrl: String(data.logoUrl || ''),
+            avatarUrl: String(data.avatarUrl || ''),
+            disclaimer: String(data.disclaimer || ''),
+            template: String(data.template || 'template1'),
+            logoSize: Number(data.logoSize || 80),
+            maintainRatio: data.maintainRatio !== undefined ? Boolean(data.maintainRatio) : true,
+            socialMedia: {
+                linkedin: String(data.socialMedia?.linkedin || ''),
+                twitter: String(data.socialMedia?.twitter || ''),
+                facebook: String(data.socialMedia?.facebook || ''),
+                instagram: String(data.socialMedia?.instagram || ''),
+                youtube: String(data.socialMedia?.youtube || ''),
+                github: String(data.socialMedia?.github || '')
+            },
+            lastModified: new Date().toISOString()
+        };
+
+        // Veri doğrulama
+        if (!standardizedData.name) {
+            throw new Error('İsim alanı zorunludur');
+        }
+
+        if (!standardizedData.email) {
+            throw new Error('E-posta alanı zorunludur');
+        }
+
+        // E-posta formatı kontrolü
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(standardizedData.email)) {
+            throw new Error('Geçersiz e-posta formatı');
+        }
+
+        // Renk formatı kontrolü
+        const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+        if (!colorRegex.test(standardizedData.primaryColor)) {
+            throw new Error('Geçersiz birincil renk formatı');
+        }
+        if (!colorRegex.test(standardizedData.secondaryColor)) {
+            throw new Error('Geçersiz ikincil renk formatı');
+        }
+
+        // URL formatı kontrolü (opsiyonel alanlar için)
+        const urlRegex = /^(https?:\/\/.*)?$/;
+        if (standardizedData.website && !urlRegex.test(standardizedData.website)) {
+            throw new Error('Geçersiz website URL formatı');
+        }
+        if (standardizedData.logoUrl && !urlRegex.test(standardizedData.logoUrl)) {
+            throw new Error('Geçersiz logo URL formatı');
+        }
+        if (standardizedData.avatarUrl && !urlRegex.test(standardizedData.avatarUrl)) {
+            throw new Error('Geçersiz avatar URL formatı');
+        }
+
+        return standardizedData;
+    } catch (error) {
+        console.error('Veri standardizasyon hatası:', error);
+        throw new Error('Veri doğrulama hatası: ' + error.message);
     }
-    return validation.data;
 }
