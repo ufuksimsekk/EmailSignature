@@ -1355,7 +1355,7 @@ function renderSignaturesList(localSignatures, cloudSignatures) {
                             <div class="signature-name">${signatureName}</div>
                             <div class="signature-preview">${signatureHtml}</div>
                             <div class="signature-actions">
-                                <button class="load-signature" data-id="${signature.id}" data-type="cloud">Yükle</button>
+                                <button class="load-signature" data-id="${signature.id}" data-type="cloud">Editörde Aç</button>
                                 <button class="delete-signature" data-id="${signature.id}" data-type="cloud">Sil</button>
                             </div>
                         </div>
@@ -1389,7 +1389,7 @@ function renderSignaturesList(localSignatures, cloudSignatures) {
                             <div class="signature-name">${signatureName}</div>
                             <div class="signature-preview">${signatureHtml}</div>
                             <div class="signature-actions">
-                                <button class="load-signature" data-index="${index}" data-type="local">Yükle</button>
+                                <button class="load-signature" data-index="${index}" data-type="local">Editörde Aç</button>
                                 <button class="delete-signature" data-index="${index}" data-type="local">Sil</button>
                                 ${currentUser && currentUser.token ? `<button class="upload-signature" data-index="${index}">Buluta Yükle</button>` : ''}
                             </div>
