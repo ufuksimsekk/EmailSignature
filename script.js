@@ -2298,15 +2298,51 @@ function standardizeSignatureData(data) {
         }
 
         // URL formatı kontrolü (opsiyonel alanlar için)
-        const urlRegex = /^(https?:\/\/.*)?$/;
-        if (standardizedData.website && !urlRegex.test(standardizedData.website)) {
-            throw new Error('Geçersiz website URL formatı');
+        function isValidUrl(url) {
+            if (!url) return true; // Boş URL'lere izin ver
+            try {
+                new URL(url);
+                return true;
+            } catch {
+                // URL protokol içermiyorsa, http:// ekleyip tekrar dene
+                try {
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        new URL('http://' + url);
+                        return true;
+                    }
+                } catch {
+                    return false;
+                }
+                return false;
+            }
         }
-        if (standardizedData.logoUrl && !urlRegex.test(standardizedData.logoUrl)) {
-            throw new Error('Geçersiz logo URL formatı');
+
+        // URL'leri kontrol et ve gerekirse düzelt
+        if (standardizedData.website) {
+            if (!isValidUrl(standardizedData.website)) {
+                throw new Error('Geçersiz website URL formatı');
+            }
+            if (!standardizedData.website.startsWith('http://') && !standardizedData.website.startsWith('https://')) {
+                standardizedData.website = 'http://' + standardizedData.website;
+            }
         }
-        if (standardizedData.avatarUrl && !urlRegex.test(standardizedData.avatarUrl)) {
-            throw new Error('Geçersiz avatar URL formatı');
+
+        if (standardizedData.logoUrl) {
+            if (!isValidUrl(standardizedData.logoUrl)) {
+                throw new Error('Geçersiz logo URL formatı');
+            }
+            if (!standardizedData.logoUrl.startsWith('http://') && !standardizedData.logoUrl.startsWith('https://')) {
+                standardizedData.logoUrl = 'http://' + standardizedData.logoUrl;
+            }
+        }
+
+        if (standardizedData.avatarUrl) {
+            if (!isValidUrl(standardizedData.avatarUrl)) {
+                throw new Error('Geçersiz avatar URL formatı');
+            }
+            if (!standardizedData.avatarUrl.startsWith('http://') && !standardizedData.avatarUrl.startsWith('https://')) {
+                standardizedData.avatarUrl = 'http://' + standardizedData.avatarUrl;
+            }
         }
 
         return standardizedData;
