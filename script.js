@@ -1527,6 +1527,24 @@ async function loadSignatureFromCloud(id) {
         const signature = await response.json();
         console.log('API\'den gelen orijinal imza verisi:', signature);
         
+        // Yerel depoda bu imzanın tam versiyonu var mı kontrol et
+        const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+        let localSignature = null;
+        
+        // Eğer cloud ID'si eşleşen bir yerel imza varsa
+        for (const sig of savedSignatures) {
+            if (sig.cloudId && sig.cloudId === id) {
+                localSignature = sig;
+                break;
+            }
+        }
+        
+        if (localSignature) {
+            console.log('Bu imzanın yerel versiyonu bulundu, yerel veri kullanılacak:', localSignature);
+            loadSignatureToForm(localSignature);
+            return;
+        }
+        
         // Eğer signature.html varsa ve diğer alanlar eksikse, HTML'den veri çıkarmayı deneyelim
         if (signature.html && (!signature.name || !signature.title)) {
             console.log('HTML içeriğinden veri çıkarma işlemi başlatılıyor...');
@@ -1632,10 +1650,18 @@ async function loadSignatureFromCloud(id) {
                     enabled: signature.instagram?.enabled || false,
                     url: signature.instagram?.url || ''
                 },
-                html: signature.html || ''
+                html: signature.html || '',
+                cloudId: id // Bulut ID'sini ekleyelim
             };
             
             console.log('HTML\'den çıkarılan ve formatlanmış imza verisi:', formattedSignature);
+            
+            // Formatlanmış imzayı yerel depolamaya da kaydedelim
+            const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+            savedSignatures.push(formattedSignature);
+            localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+            console.log('Formatlanmış imza yerel depolamaya kaydedildi');
+            
             loadSignatureToForm(formattedSignature);
         } else {
             // Normal formatlama işlemi
@@ -1671,10 +1697,18 @@ async function loadSignatureFromCloud(id) {
                     enabled: signature.instagram?.enabled || false,
                     url: signature.instagram?.url || ''
                 },
-                html: signature.html || ''
+                html: signature.html || '',
+                cloudId: id // Bulut ID'sini ekleyelim
             };
             
             console.log('Formatlanmış imza verisi:', formattedSignature);
+            
+            // Formatlanmış imzayı yerel depolamaya da kaydedelim
+            const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
+            savedSignatures.push(formattedSignature);
+            localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+            console.log('Formatlanmış imza yerel depolamaya kaydedildi');
+            
             loadSignatureToForm(formattedSignature);
         }
     } catch (error) {
@@ -1763,7 +1797,18 @@ async function uploadLocalSignatureToCloud(index) {
         if (index >= 0 && index < savedSignatures.length) {
             const signature = savedSignatures[index];
             
-            await saveSignatureToCloud(signature);
+            // Buluta yükle ve yanıtı al
+            const cloudResponse = await saveSignatureToCloud(signature);
+            
+            // Eğer API bir ID döndüyse, bu ID'yi yerel imzaya ekle
+            if (cloudResponse && cloudResponse.id) {
+                // Yerel imzaya bulut ID'sini ekle
+                savedSignatures[index].cloudId = cloudResponse.id;
+                // Güncellenmiş imzaları yerel depolamaya kaydet
+                localStorage.setItem('emailSignatures', JSON.stringify(savedSignatures));
+                console.log('İmza ID yerel depolamaya kaydedildi:', cloudResponse.id);
+            }
+            
             alert(`"${signature.name}" imzası başarıyla buluta yüklendi!`);
             updateSavedSignaturesList();
         }
