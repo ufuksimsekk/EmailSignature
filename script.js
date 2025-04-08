@@ -1461,6 +1461,50 @@ function loadSignatureFromLocal(index) {
     }
 }
 
+// Tüm bulut imzalarını yükleme fonksiyonu
+async function loadSignaturesFromCloud() {
+    try {
+        if (!currentUser || !currentUser.token) {
+            throw new Error('Kullanıcı giriş yapmamış');
+        }
+        
+        const response = await fetch(`${API_URL}/users/signatures`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`İmzalar yüklenemedi (${response.status})`);
+        }
+        
+        const signatures = await response.json();
+        
+        // Eğer API bir dizi döndürüyorsa, doğrudan kullan
+        if (Array.isArray(signatures)) {
+            return signatures;
+        }
+        
+        // Eğer API bir nesne döndürüyorsa, içindeki dizi alanlarını kontrol et
+        if (typeof signatures === 'object') {
+            if (signatures.signatures && Array.isArray(signatures.signatures)) {
+                return signatures.signatures;
+            } else if (signatures.items && Array.isArray(signatures.items)) {
+                return signatures.items;
+            } else if (signatures.data && Array.isArray(signatures.data)) {
+                return signatures.data;
+            }
+        }
+        
+        // En kötü durumda boş dizi döndür
+        return [];
+    } catch (error) {
+        console.error('Buluttan imzalar yüklenemedi:', error);
+        throw error;
+    }
+}
+
 // İmza yükleme fonksiyonu (Bulut)
 async function loadSignatureFromCloud(id) {
     try {
@@ -1488,14 +1532,9 @@ async function loadSignatureFromCloud(id) {
     }
 }
 
-
-
 // Form verilerini doldur
-function loadSignatureToForm(index) {
-    const savedSignatures = JSON.parse(localStorage.getItem('emailSignatures') || '[]');
-    if (index >= 0 && index < savedSignatures.length) {
-        const signature = savedSignatures[index];
-        
+function loadSignatureToForm(signature) {
+    try {
         // Form alanlarını doldur
         document.getElementById('name').value = signature.name || '';
         document.getElementById('title').value = signature.title || '';
@@ -1532,10 +1571,11 @@ function loadSignatureToForm(index) {
         
         // Editör sekmesine geç
         switchTab('editor');
+    } catch (error) {
+        console.error('Form doldurma hatası:', error);
+        alert('İmza yüklenirken bir hata oluştu: ' + error.message);
     }
 }
-
-
 
 // İmza silme fonksiyonu
 function deleteSignatureFromLocal(index) {
