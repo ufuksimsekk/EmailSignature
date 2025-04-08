@@ -1525,7 +1525,43 @@ async function loadSignatureFromCloud(id) {
         }
         
         const signature = await response.json();
-        loadSignatureToForm(signature);
+        
+        // API'den gelen veriyi kontrol et ve dönüştür
+        const formattedSignature = {
+            name: signature.name || '',
+            title: signature.title || '',
+            company: signature.company || '',
+            email: signature.email || '',
+            phone: signature.phone || '',
+            website: signature.website || '',
+            address: signature.address || '',
+            template: signature.template || 'simple',
+            font: signature.font || 'Arial',
+            fontSize: signature.fontSize || '14px',
+            primaryColor: signature.primaryColor || '#3498db',
+            secondaryColor: signature.secondaryColor || '#2c3e50',
+            logoUrl: signature.logoUrl || '',
+            avatarUrl: signature.avatarUrl || '',
+            disclaimer: signature.disclaimer || '',
+            linkedin: {
+                enabled: signature.linkedin?.enabled || false,
+                url: signature.linkedin?.url || ''
+            },
+            twitter: {
+                enabled: signature.twitter?.enabled || false,
+                url: signature.twitter?.url || ''
+            },
+            facebook: {
+                enabled: signature.facebook?.enabled || false,
+                url: signature.facebook?.url || ''
+            },
+            instagram: {
+                enabled: signature.instagram?.enabled || false,
+                url: signature.instagram?.url || ''
+            }
+        };
+        
+        loadSignatureToForm(formattedSignature);
     } catch (error) {
         console.error('Buluttan imza yükleme hatası:', error);
         alert('İmza yüklenemedi: ' + error.message);
