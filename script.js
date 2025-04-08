@@ -1538,63 +1538,48 @@ async function loadSignatureFromCloud(id) {
 // Form verilerini doldur
 async function loadSignatureToForm(signature) {
     try {
-        // Form alanlarını sıfırla
-        document.getElementById('name').value = '';
-        document.getElementById('title').value = '';
-        document.getElementById('company').value = '';
-        document.getElementById('email').value = '';
-        document.getElementById('phone').value = '';
-        document.getElementById('website').value = '';
-        document.getElementById('address').value = '';
-        document.getElementById('font').value = 'Arial';
-        document.getElementById('fontSize').value = '12';
-        document.getElementById('primaryColor').value = '#000000';
-        document.getElementById('secondaryColor').value = '#666666';
-        document.getElementById('logoUrl').value = '';
-        document.getElementById('avatarUrl').value = '';
-        document.getElementById('disclaimer').value = '';
-        document.getElementById('template').value = 'template1';
-        document.getElementById('linkedin').value = '';
-        document.getElementById('twitter').value = '';
-        document.getElementById('facebook').value = '';
-        document.getElementById('instagram').value = '';
-        document.getElementById('youtube').value = '';
-        document.getElementById('github').value = '';
-
         // Veriyi standardize et ve doğrula
         const standardizedSignature = standardizeSignatureData(signature);
         console.log('Form için standardize edilmiş imza verisi:', standardizedSignature);
 
         // Form alanlarını doldur
-        document.getElementById('name').value = standardizedSignature.name || '';
-        document.getElementById('title').value = standardizedSignature.title || '';
-        document.getElementById('company').value = standardizedSignature.company || '';
-        document.getElementById('email').value = standardizedSignature.email || '';
-        document.getElementById('phone').value = standardizedSignature.phone || '';
-        document.getElementById('website').value = standardizedSignature.website || '';
-        document.getElementById('address').value = standardizedSignature.address || '';
-        document.getElementById('font').value = standardizedSignature.font || 'Arial';
-        document.getElementById('fontSize').value = standardizedSignature.fontSize || '12';
-        document.getElementById('primaryColor').value = standardizedSignature.primaryColor || '#000000';
-        document.getElementById('secondaryColor').value = standardizedSignature.secondaryColor || '#666666';
-        document.getElementById('logoUrl').value = standardizedSignature.logoUrl || '';
-        document.getElementById('avatarUrl').value = standardizedSignature.avatarUrl || '';
-        document.getElementById('disclaimer').value = standardizedSignature.disclaimer || '';
-        document.getElementById('template').value = standardizedSignature.template || 'template1';
+        const formFields = {
+            name: standardizedSignature.name || '',
+            title: standardizedSignature.title || '',
+            company: standardizedSignature.company || '',
+            email: standardizedSignature.email || '',
+            phone: standardizedSignature.phone || '',
+            website: standardizedSignature.website || '',
+            address: standardizedSignature.address || '',
+            font: standardizedSignature.font || 'Arial',
+            fontSize: standardizedSignature.fontSize || '12',
+            primaryColor: standardizedSignature.primaryColor || '#000000',
+            secondaryColor: standardizedSignature.secondaryColor || '#666666',
+            logoUrl: standardizedSignature.logoUrl || '',
+            avatarUrl: standardizedSignature.avatarUrl || '',
+            disclaimer: standardizedSignature.disclaimer || '',
+            template: standardizedSignature.template || 'template1',
+            linkedin: standardizedSignature.socialMedia?.linkedin || '',
+            twitter: standardizedSignature.socialMedia?.twitter || '',
+            facebook: standardizedSignature.socialMedia?.facebook || '',
+            instagram: standardizedSignature.socialMedia?.instagram || '',
+            youtube: standardizedSignature.socialMedia?.youtube || '',
+            github: standardizedSignature.socialMedia?.github || ''
+        };
+
+        // Her form alanını güvenli bir şekilde doldur
+        for (const [fieldId, value] of Object.entries(formFields)) {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.value = value;
+            } else {
+                console.warn(`${fieldId} elementi bulunamadı`);
+            }
+        }
 
         // Logo boyutlarını güncelle
         logoSize = standardizedSignature.logoSize || 80;
         maintainRatio = standardizedSignature.maintainRatio !== undefined ? standardizedSignature.maintainRatio : true;
-
-        // Sosyal medya alanlarını doldur
-        if (standardizedSignature.socialMedia) {
-            document.getElementById('linkedin').value = standardizedSignature.socialMedia.linkedin || '';
-            document.getElementById('twitter').value = standardizedSignature.socialMedia.twitter || '';
-            document.getElementById('facebook').value = standardizedSignature.socialMedia.facebook || '';
-            document.getElementById('instagram').value = standardizedSignature.socialMedia.instagram || '';
-            document.getElementById('youtube').value = standardizedSignature.socialMedia.youtube || '';
-            document.getElementById('github').value = standardizedSignature.socialMedia.github || '';
-        }
 
         // Logo kontrol panelini güncelle
         const logoControlPanel = document.getElementById('logoControlPanel');
